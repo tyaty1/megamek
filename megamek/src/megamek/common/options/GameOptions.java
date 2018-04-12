@@ -29,6 +29,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.namespace.QName;
 
 import megamek.common.TechConstants;
+import megamek.common.logging.DefaultMmLogger;
+import megamek.common.logging.LogLevel;
+import megamek.common.logging.MMLogger;
 
 /**
  * Contains the options determining play in the current game.
@@ -38,6 +41,7 @@ import megamek.common.TechConstants;
 public class GameOptions extends AbstractOptions {
     private static final long serialVersionUID = 4916321960852747706L;
     private static final String GAME_OPTIONS_FILE_NAME = "mmconf/gameoptions.xml"; //$NON-NLS-1$
+    private static final MMLogger LOGGER = DefaultMmLogger.getInstance();
 
     public GameOptions() {
         super();
@@ -45,7 +49,7 @@ public class GameOptions extends AbstractOptions {
 
     @Override
     public synchronized void initialize() {
-        IBasicOptionGroup base = addGroup("basic"); //$NON-NLS-1$
+        final IBasicOptionGroup base = addGroup("basic"); //$NON-NLS-1$
         addOption(base, OptionsConstants.BASE_FRIENDLY_FIRE, false); //$NON-NLS-1$
         addOption(base, OptionsConstants.BASE_SKIP_INELIGABLE_MOVEMENT, false); //$NON-NLS-1$
         addOption(base, OptionsConstants.BASE_SKIP_INELIGABLE_FIRING, false); //$NON-NLS-1$
@@ -72,8 +76,8 @@ public class GameOptions extends AbstractOptions {
         addOption(base, OptionsConstants.BASE_BREEZE, false); //$NON-NLS-1$
         addOption(base, OptionsConstants.BASE_RANDOM_BASEMENTS, true); //$NON-NLS-1$
         addOption(base, OptionsConstants.BASE_AUTO_AMS, true); //$NON-NLS-1$
-        
-        IBasicOptionGroup victory = addGroup("victory"); //$NON-NLS-1$
+
+        final IBasicOptionGroup victory = addGroup("victory"); //$NON-NLS-1$
         addOption(victory, OptionsConstants.VICTORY_SKIP_FORCED_VICTORY, false); //$NON-NLS-1$
         addOption(victory, OptionsConstants.VICTORY_CHECK_VICTORY, true); //$NON-NLS-1$
         addOption(victory, OptionsConstants.VICTORY_ACHIEVE_CONDITIONS, 1); //$NON-NLS-1$
@@ -87,7 +91,7 @@ public class GameOptions extends AbstractOptions {
         addOption(victory, OptionsConstants.VICTORY_GAME_KILL_COUNT, 4); //$NON-NLS-1$
         addOption(victory, OptionsConstants.VICTORY_COMMANDER_KILLED, false); //$NON-NLS-1$
 
-        IBasicOptionGroup allowed = addGroup("allowedUnits"); //$NON-NLS-1$
+        final IBasicOptionGroup allowed = addGroup("allowedUnits"); //$NON-NLS-1$
         addOption(allowed, OptionsConstants.ALLOWED_CANON_ONLY, false); //$NON-NLS-1$
         addOption(allowed, OptionsConstants.ALLOWED_YEAR, 3150); //$NON-NLS-1$
         addOption(allowed, OptionsConstants.ALLOWED_TECHLEVEL, IOption.CHOICE, TechConstants.T_SIMPLE_NAMES[TechConstants.T_SIMPLE_STANDARD]); //$NON-NLS-1$
@@ -97,8 +101,8 @@ public class GameOptions extends AbstractOptions {
         addOption(allowed, OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL, false); //$NON-NLS-1$
         addOption(allowed, OptionsConstants.ALLOWED_ALLOW_NUKES, false); //$NON-NLS-1$
         addOption(allowed, OptionsConstants.ALLOWED_REALLY_ALLOW_NUKES, false); //$NON-NLS-1$
-           
-        IBasicOptionGroup advancedRules = addGroup("advancedRules"); //$NON-NLS-1$
+
+        final IBasicOptionGroup advancedRules = addGroup("advancedRules"); //$NON-NLS-1$
         addOption(advancedRules, OptionsConstants.ADVANCED_MINEFIELDS, false); //$NON-NLS-1$
         addOption(advancedRules, OptionsConstants.ADVANCED_HIDDEN_UNITS, false); //$NON-NLS-1$
         addOption(advancedRules, OptionsConstants.ADVANCED_DOUBLE_BLIND, false); //$NON-NLS-1$
@@ -144,9 +148,9 @@ public class GameOptions extends AbstractOptions {
         addOption(advancedRules, OptionsConstants.ADVANCED_GEOMETRIC_MEAN_BV, false); //$NON-NLS-1$\
         addOption(advancedRules, OptionsConstants.ADVANCED_REDUCED_OVERHEAT_MODIFIER_BV, false); //$NON-NLS-1$
         addOption(advancedRules, OptionsConstants.ADVANCED_ALTERNATE_PILOT_BV_MOD, false); //$NON-NLS-1$
-        
 
-        IBasicOptionGroup advancedCombat = addGroup("advancedCombat"); //$NON-NLS-1$
+
+        final IBasicOptionGroup advancedCombat = addGroup("advancedCombat"); //$NON-NLS-1$
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_TACOPS_AMS, false); // $NON-NLS-1$
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_FLOATING_CRITS, false); // $NON-NLS-1$
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_TACOPS_CRIT_ROLL, false); // $NON-NLS-1$
@@ -208,8 +212,8 @@ public class GameOptions extends AbstractOptions {
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_FOREST_FIRES_NO_SMOKE, false); // $NON-NLS-1$
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_HOTLOAD_IN_GAME, false); // $NON-NLS-1$
         addOption(advancedCombat, OptionsConstants.ADVCOMBAT_MULTI_USE_AMS, false); // $NON-NLS-1$
-    
-        IBasicOptionGroup advancedGroundMovement = addGroup("advancedGroundMovement"); //$NON-NLS-1$
+
+        final IBasicOptionGroup advancedGroundMovement = addGroup("advancedGroundMovement"); //$NON-NLS-1$
         addOption(advancedGroundMovement, OptionsConstants.ADVGRNDMOV_TACOPS_SPRINT, false); //$NON-NLS-1$
         addOption(advancedGroundMovement, OptionsConstants.ADVGRNDMOV_TACOPS_STANDING_STILL, false); //$NON-NLS-1$
         addOption(advancedGroundMovement, OptionsConstants.ADVGRNDMOV_TACOPS_EVADE, false); //$NON-NLS-1$
@@ -244,7 +248,7 @@ public class GameOptions extends AbstractOptions {
         addOption(advancedGroundMovement, OptionsConstants.ADVGRNDMOV_PSR_JUMP_HEAVY_WOODS, false);
         addOption(advancedGroundMovement, OptionsConstants.ADVGRNDMOV_NO_NIGHT_MOVE_PEN, false); //$NON-NLS-1$
 
-        IBasicOptionGroup advAeroRules = addGroup("advancedAeroRules"); //$NON-NLS-1$
+        final IBasicOptionGroup advAeroRules = addGroup("advancedAeroRules"); //$NON-NLS-1$
         addOption(advAeroRules, OptionsConstants.ADVAERORULES_AERO_GROUND_MOVE, true); //$NON-NLS-1$
         addOption(advAeroRules, OptionsConstants.ADVAERORULES_STRATOPS_CAPITAL_FIGHTER, false); //$NON-NLS-1$
         addOption(advAeroRules, OptionsConstants.ADVAERORULES_FUEL_CONSUMPTION, false); //$NON-NLS-1$
@@ -273,7 +277,7 @@ public class GameOptions extends AbstractOptions {
         addOption(advAeroRules, OptionsConstants.ADVAERORULES_ALLOW_LARGE_SQUADRONS, false); //$NON-NLS-1$
         addOption(advAeroRules, OptionsConstants.ADVAERORULES_SINGLE_NO_CAP, false); //$NON-NLS-1$
 
-        IBasicOptionGroup initiative = addGroup("initiative"); //$NON-NLS-1$
+        final IBasicOptionGroup initiative = addGroup("initiative"); //$NON-NLS-1$
         addOption(initiative, OptionsConstants.INIT_INF_MOVE_EVEN, false); //$NON-NLS-1$
         addOption(initiative, OptionsConstants.INIT_INF_DEPLOY_EVEN, false); //$NON-NLS-1$
         addOption(initiative, OptionsConstants.INIT_INF_MOVE_LATER, false); //$NON-NLS-1$
@@ -290,8 +294,8 @@ public class GameOptions extends AbstractOptions {
         addOption(initiative, OptionsConstants.INIT_SIMULTANEOUS_PHYSICAL, false); //$NON-NLS-1$
         addOption(initiative, OptionsConstants.INIT_FRONT_LOAD_INITIATIVE, false); //$NON-NLS-1$
         addOption(initiative, OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION, false); //$NON-NLS-1$
-        
-        IBasicOptionGroup rpg = addGroup("rpg"); //$NON-NLS-1
+
+        final IBasicOptionGroup rpg = addGroup("rpg"); //$NON-NLS-1
         addOption(rpg, OptionsConstants.RPG_PILOT_ADVANTAGES, false); //$NON-NLS-1$
         addOption(rpg, OptionsConstants.EDGE, false); //$NON-NLS-1$
         addOption(rpg, OptionsConstants.RPG_MANEI_DOMINI, false); //$NON-NLS-1$
@@ -312,37 +316,39 @@ public class GameOptions extends AbstractOptions {
         return loadOptions(new File(GAME_OPTIONS_FILE_NAME), true);
     }
 
-    public synchronized Vector<IOption> loadOptions(File file, boolean print) {
-        Vector<IOption> changedOptions = new Vector<IOption>(1, 1);
+    public synchronized Vector<IOption> loadOptions(final File file,
+                                                    final boolean print) {
+        final Vector<IOption> changedOptions = new Vector<>(1, 1);
 
         if (!file.exists()) {
             return changedOptions;
         }
         
         try {
-            JAXBContext jc = JAXBContext.newInstance(GameOptionsXML.class, Option.class, BasicOption.class);
-            
-            Unmarshaller um = jc.createUnmarshaller();
-            GameOptionsXML opts = (GameOptionsXML) um.unmarshal(file);
+            final JAXBContext jc = JAXBContext.newInstance(GameOptionsXML.class, Option.class, BasicOption.class);
 
-            for (IBasicOption bo : opts.getOptions()) {
+            final Unmarshaller um = jc.createUnmarshaller();
+            final GameOptionsXML opts = (GameOptionsXML) um.unmarshal(file);
+
+            for (final IBasicOption bo : opts.getOptions()) {
                 changedOptions.add(parseOptionNode(bo, print));
             }
-        } catch (JAXBException ex) {
-            System.err.println("Error loading XML for game options: " + ex.getMessage()); //$NON-NLS-1$
-            ex.printStackTrace();
+        } catch (final JAXBException ex) {
+            LOGGER.log(getClass(), "loadOptions(File, boolean)", ex);
         }
 
         return changedOptions;
     }
 
     private IOption parseOptionNode(final IBasicOption node, final boolean print) {
+        final String methodName = "parseOptionNode(IBasicOption, boolean)";
+        
         IOption option = null;
 
-        String name = node.getName();
-        Object value = node.getValue();
+        final String name = node.getName();
+        final Object value = node.getValue();
         if ((null != name) && (null != value)) {
-            IOption tempOption = getOption(name);
+            final IOption tempOption = getOption(name);
 
             if (null != tempOption) {
                 if (!tempOption.getValue().toString()
@@ -355,8 +361,8 @@ public class GameOptions extends AbstractOptions {
                                 break;
 
                             case IOption.BOOLEAN:
-                                tempOption.setValue(new Boolean(value
-                                        .toString()));
+                                tempOption.setValue(Boolean.valueOf(value
+                                                                            .toString()));
                                 break;
 
                             case IOption.INTEGER:
@@ -370,28 +376,27 @@ public class GameOptions extends AbstractOptions {
                                 break;
                         }
                         if (print) {
-                            System.out.println("Set option '" + name //$NON-NLS-1$
-                                    + "' to '" + value + "'."); //$NON-NLS-1$ //$NON-NLS-2$
+                            LOGGER.log(getClass(), methodName, LogLevel.INFO,
+                                       "Set option '" + name + "' to '" + value + "'.");
                         }
 
                         option = tempOption;
-                    } catch (IllegalArgumentException iaEx) {
-                        System.out.println("Error trying to load option '"
-                                + name + "' with a value of '" + value
-                                + "'."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    } catch (final IllegalArgumentException iaEx) {
+                        LOGGER.log(getClass(), methodName, LogLevel.ERROR,
+                                   "Error trying to load option '" + name + "' with a value of '" + value +
+                                   "'.", iaEx);
                     }
                 }
             } else {
-                System.out.println("Invalid option '" + name
-                        + "' when trying to load options file.");
-                //$NON-NLS-1$ //$NON-NLS-2$
+                LOGGER.log(getClass(), methodName, LogLevel.WARNING,
+                           "Invalid option '" + name + "' when trying to load options file.");
             }
         }
 
         return option;
     }
 
-    public static void saveOptions(Vector<IBasicOption> options) {
+    public static void saveOptions(final Vector<IBasicOption> options) {
         saveOptions(options, GAME_OPTIONS_FILE_NAME);
     }
 
@@ -401,23 +406,26 @@ public class GameOptions extends AbstractOptions {
      * @param options <code>Vector</code> of <code>IBasicOption</code>
      * @param file
      */
-    public static void saveOptions(Vector<IBasicOption> options, String file) {
+    public static void saveOptions(final Vector<IBasicOption> options,
+                                   final String file) {
         try {
-            JAXBContext jc = JAXBContext.newInstance(GameOptionsXML.class, Option.class, BasicOption.class);
-            
-            Marshaller marshaller = jc.createMarshaller();
+            final JAXBContext jc = JAXBContext.newInstance(GameOptionsXML.class, Option.class, BasicOption.class);
+
+            final Marshaller marshaller = jc.createMarshaller();
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
             
             // The default header has the encoding and standalone properties
             marshaller.setProperty(Marshaller.JAXB_FRAGMENT, true);
             marshaller.setProperty("com.sun.xml.internal.bind.xmlHeaders", "<?xml version=\"1.0\"?>");
-            
-            JAXBElement<GameOptionsXML> element = new JAXBElement<>(new QName("options"), GameOptionsXML.class, new GameOptionsXML(options));
+
+            final JAXBElement<GameOptionsXML> element = new JAXBElement<>(new QName("options"),
+                                                                          GameOptionsXML.class,
+                                                                          new GameOptionsXML(options));
             
             marshaller.marshal(element, new File(file));
-        } catch (JAXBException ex) {
-            System.err.println("Error writing XML for game options: " + ex.getMessage()); //$NON-NLS-1$
-            ex.printStackTrace();
+        } catch (final JAXBException ex) {
+            LOGGER.log(GameOptions.class, "saveOptions(Vector<IBasicOption>, String)", LogLevel.ERROR,
+                       "Error writing XML for game options.", ex);
         }
     }
 
@@ -433,14 +441,14 @@ public class GameOptions extends AbstractOptions {
 
     private static class GameOptionsInfo extends AbstractOptionsInfo {
 
-        private static AbstractOptionsInfo instance = new GameOptionsInfo();
+        private static final AbstractOptionsInfo INSTANCE = new GameOptionsInfo();
 
         protected GameOptionsInfo() {
             super("GameOptionsInfo"); //$NON-NLS-1$
         }
 
         public static AbstractOptionsInfo getInstance() {
-            return instance;
+            return INSTANCE;
         }
     }
     

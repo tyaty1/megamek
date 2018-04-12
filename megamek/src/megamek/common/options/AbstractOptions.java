@@ -19,7 +19,6 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Vector;
 
 /**
  * Parent class for options settings
@@ -30,9 +29,9 @@ public abstract class AbstractOptions implements IOptions, Serializable {
      *
      */
     private static final long serialVersionUID = 6406883135074654379L;
-    private Hashtable<String, IOption> optionsHash = new Hashtable<String, IOption>();
+    private final Hashtable<String, IOption> optionsHash = new Hashtable<>();
 
-    protected AbstractOptions() {
+    AbstractOptions() {
         initialize();
         getOptionsInfoImp().finish();
     }
@@ -52,18 +51,18 @@ public abstract class AbstractOptions implements IOptions, Serializable {
      * @param groupKey the group key to filter on. Null signifies to return all options indiscriminately.
      * @return Option count.
      */
-    public int count(String groupKey) {
+    public int count(final String groupKey) {
         int count = 0;
-        
-        for (Enumeration<IOptionGroup> i = getGroups(); i
+
+        for (final Enumeration<IOptionGroup> i = getGroups(); i
                 .hasMoreElements(); ) {
-            IOptionGroup group = i.nextElement();
-            if ((groupKey != null) && !group.getKey().equalsIgnoreCase(groupKey)) {
+            final IOptionGroup group = i.nextElement();
+            if ((null != groupKey) && !group.getKey().equalsIgnoreCase(groupKey)) {
                 continue;
             }
-            for (Enumeration<IOption> j = group.getOptions(); j
+            for (final Enumeration<IOption> j = group.getOptions(); j
                     .hasMoreElements(); ) {
-                IOption option = j.nextElement();
+                final IOption option = j.nextElement();
 
                 if (null != option && option.booleanValue()) {
                     count++;
@@ -79,7 +78,7 @@ public abstract class AbstractOptions implements IOptions, Serializable {
      * the separator
      * @param separator The separator to insert between codes, in addition to a space
      */
-    public String getOptionList(String separator) {
+    public String getOptionList(final String separator) {
         return getOptionListString(separator, null);
     }
     
@@ -89,31 +88,32 @@ public abstract class AbstractOptions implements IOptions, Serializable {
      * @param separator The separator to insert between codes, in addition to a space
      * @param groupKey The group key to use to filter options. Null signifies to return all options indiscriminately.
      */
-    public String getOptionListString(String separator, String groupKey) {
-        StringBuffer listBuilder = new StringBuffer();
+    public String getOptionListString(String separator,
+                                      final String groupKey) {
+        final StringBuilder listBuilder = new StringBuilder();
         
         if (null == separator) {
             separator = "";
         }
 
-        for (Enumeration<IOptionGroup> i = getGroups(); i.hasMoreElements();) {
-            IOptionGroup group = i.nextElement();
-            
-            if ((groupKey != null) && !group.getKey().equalsIgnoreCase(groupKey)) {
+        for (final Enumeration<IOptionGroup> i = getGroups(); i.hasMoreElements(); ) {
+            final IOptionGroup group = i.nextElement();
+
+            if ((null != groupKey) && !group.getKey().equalsIgnoreCase(groupKey)) {
                 continue;
             }
-            
-            for (Enumeration<IOption> j = group.getOptions(); j
+
+            for (final Enumeration<IOption> j = group.getOptions(); j
                     .hasMoreElements();) {
-                IOption option = j.nextElement();
-                if (option != null && option.booleanValue()) {
-                    if (listBuilder.length() > 0) {
+                final IOption option = j.nextElement();
+                if (null != option && option.booleanValue()) {
+                    if (0 < listBuilder.length()) {
                         listBuilder.append(separator);
                     }
                     listBuilder.append(option.getName());
-                    if ((option.getType() == IOption.STRING)
-                            || (option.getType() == IOption.CHOICE)
-                            || (option.getType() == IOption.INTEGER)) {
+                    if ((IOption.STRING == option.getType())
+                        || (IOption.CHOICE == option.getType())
+                        || (IOption.INTEGER == option.getType())) {
                         listBuilder.append(" ").append(option.stringValue());
                     }
                 }
@@ -140,82 +140,74 @@ public abstract class AbstractOptions implements IOptions, Serializable {
      *
      * @see megamek.common.IOptions#getOptionInfo(java.lang.String)
      */
-    public IOptionInfo getOptionInfo(String name) {
+    public IOptionInfo getOptionInfo(final String name) {
         return getOptionsInfo().getOptionInfo(name);
     }
 
-    public IOption getOption(String name) {
+    public IOption getOption(final String name) {
         return optionsHash.get(name);
     }
 
-    public boolean booleanOption(String name) {
-        IOption opt = getOption(name);
-        if (opt == null){
+    public boolean booleanOption(final String name) {
+        final IOption opt = getOption(name);
+        if (null == opt) {
             return false;
         } else {
             return opt.booleanValue();
         }
     }
 
-    public int intOption(String name) {
+    public int intOption(final String name) {
         return getOption(name).intValue();
     }
 
-    public float floatOption(String name) {
-        return getOption(name).floatValue();
-    }
-
-    public String stringOption(String name) {
+    public String stringOption(final String name) {
         return getOption(name).stringValue();
     }
 
-    IOptionsInfo getOptionsInfo() {
+    private IOptionsInfo getOptionsInfo() {
         return getOptionsInfoImp();
     }
 
     protected abstract AbstractOptionsInfo getOptionsInfoImp();
 
-    protected IBasicOptionGroup addGroup(String groupName) {
+    protected IBasicOptionGroup addGroup(final String groupName) {
         return getOptionsInfoImp().addGroup(groupName);
     }
 
-    protected IBasicOptionGroup addGroup(String groupName, String key) {
+    protected IBasicOptionGroup addGroup(final String groupName,
+                                         final String key) {
         return getOptionsInfoImp().addGroup(groupName, key);
     }
 
-    protected void addOption(IBasicOptionGroup group, String name,
-            String defaultValue) {
-        addOption(group, name, IOption.STRING, defaultValue);
+    void addOption(final IBasicOptionGroup group,
+                   final String name,
+                   final boolean defaultValue) {
+        addOption(group, name, IOption.BOOLEAN, defaultValue);
     }
 
-    protected void addOption(IBasicOptionGroup group, String name,
-            boolean defaultValue) {
-        addOption(group, name, IOption.BOOLEAN, new Boolean(defaultValue));
+    void addOption(final IBasicOptionGroup group,
+                   final String name,
+                   final int defaultValue) {
+        addOption(group, name, IOption.INTEGER, defaultValue);
     }
 
-    protected void addOption(IBasicOptionGroup group, String name,
-            int defaultValue) {
-        addOption(group, name, IOption.INTEGER, new Integer(defaultValue));
-    }
-
-    protected void addOption(IBasicOptionGroup group, String name,
-            float defaultValue) {
-        addOption(group, name, IOption.FLOAT, new Float(defaultValue));
-    }
-
-    protected void addOption(IBasicOptionGroup group, String name, Vector<String> defaultValue) {
+    void addOption(final IBasicOptionGroup group,
+                   final String name) {
         addOption(group, name, IOption.CHOICE, ""); //$NON-NLS-1$
     }
 
-    protected void addOption(IBasicOptionGroup group, String name, int type,
-            Object defaultValue) {
+    void addOption(final IBasicOptionGroup group,
+                   final String name,
+                   final int type,
+                   final Object defaultValue) {
         optionsHash.put(name, new Option(this, name, type, defaultValue));
         getOptionsInfoImp().addOptionInfo(group, name);
     }
 
     protected class GroupsEnumeration implements Enumeration<IOptionGroup> {
 
-        private Enumeration<IBasicOptionGroup> groups;
+        private final Enumeration<IBasicOptionGroup> groups;
 
         GroupsEnumeration() {
             groups = getOptionsInfo().getGroups();
@@ -241,9 +233,9 @@ public abstract class AbstractOptions implements IOptions, Serializable {
 
         protected class GroupProxy implements IOptionGroup {
 
-            private IBasicOptionGroup group;
+            private final IBasicOptionGroup group;
 
-            GroupProxy(IBasicOptionGroup group) {
+            GroupProxy(final IBasicOptionGroup group) {
                 this.group = group;
             }
 
@@ -269,7 +261,7 @@ public abstract class AbstractOptions implements IOptions, Serializable {
             }
 
             public Enumeration<IOption> getSortedOptions() {
-                OptionsEnumeration oe = new OptionsEnumeration();
+                final OptionsEnumeration oe = new OptionsEnumeration();
                 oe.sortOptions();
                 return oe;
             }
@@ -300,8 +292,8 @@ public abstract class AbstractOptions implements IOptions, Serializable {
                     return getOption(optionNames.nextElement());
                 }
 
-                public void sortOptions() {
-                    List<String> names = Collections.list(optionNames);
+                void sortOptions() {
+                    final List<String> names = Collections.list(optionNames);
                     Collections.sort(names);
                     optionNames = Collections.enumeration(names);
                 }

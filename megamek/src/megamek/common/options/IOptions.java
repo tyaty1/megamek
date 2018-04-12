@@ -27,7 +27,7 @@ public interface IOptions {
      * 
      * @return <code>Enumeration</code> of the <code>IOptionGroup</code>
      */
-    public abstract Enumeration<IOptionGroup> getGroups();
+    Enumeration<IOptionGroup> getGroups();
 
     /**
      * Returns the <code>Enumeration</code> of the options in this options
@@ -35,7 +35,7 @@ public interface IOptions {
      * 
      * @return <code>Enumeration</code> of the <code>IOption</code>
      */
-    public abstract Enumeration<IOption> getOptions();
+    Enumeration<IOption> getOptions();
 
     /**
      * Returns the option by name or <code>null</code> if there is no such
@@ -44,7 +44,7 @@ public interface IOptions {
      * @param name option name
      * @return the option or <code>null</code> if there is no such option
      */
-    public abstract IOption getOption(String name);
+    IOption getOption(String name);
 
     /**
      * Returns the UI specific data to allow the user to set the option
@@ -53,7 +53,7 @@ public interface IOptions {
      * @return UI specific data
      * @see IOptionInfo
      */
-    public abstract IOptionInfo getOptionInfo(String name);
+    IOptionInfo getOptionInfo(String name);
 
     /**
      * Returns the value of the desired option as the <code>boolean</code>
@@ -61,7 +61,7 @@ public interface IOptions {
      * @param name option name
      * @return the value of the desired option as the <code>boolean</code>
      */
-    public abstract boolean booleanOption(String name);
+    boolean booleanOption(String name);
 
     /**
      * Returns the value of the desired option as the <code>int</code>
@@ -69,15 +69,7 @@ public interface IOptions {
      * @param name option name
      * @return the value of the desired option as the <code>int</code>
      */
-    public abstract int intOption(String name);
-
-    /**
-     * Returns the value of the desired option as the <code>float</code>
-     * 
-     * @param name option name
-     * @return the value of the desired option as the <code>float</code>
-     */
-    public abstract float floatOption(String name);
+    int intOption(String name);
 
     /**
      * Returns the value of the desired option as the <code>String</code>
@@ -85,18 +77,18 @@ public interface IOptions {
      * @param name option name
      * @return the value of the desired option as the <code>String</code>
      */
-    public abstract String stringOption(String name);
+    String stringOption(String name);
     
     /**
      * Returns a count of all options in the current IOptions instance.
      * @return Option count.
      */
-    public abstract int count();
+    int count();
     
     /**
      * Returns a count of all options in the current IOptions instance with the given group key
      * @param groupKey The key to look for.
      * @return Option count.
      */
-    public abstract int count(String groupKey);
+    int count(String groupKey);
 }

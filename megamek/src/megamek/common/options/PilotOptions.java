@@ -14,8 +14,6 @@
 
 package megamek.common.options;
 
-import java.util.Vector;
-
 /**
  * Contains the options determining abilities of the pilot
  *
@@ -70,17 +68,17 @@ public class PilotOptions extends AbstractOptions {
         // addOption(adv, OptionsConstants.GUNNERY_FIST_FIRE, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_GOLDEN_GOOSE, false); //$NON-NLS-1$
         // addOption(adv, OptionsConstants.GUNNERY_GROUND_HUGGER, false); //$NON-NLS-1$
-        addOption(adv, OptionsConstants.GUNNERY_SPECIALIST, new Vector<String>()); //$NON-NLS-1$
+        addOption(adv, OptionsConstants.GUNNERY_SPECIALIST); //$NON-NLS-1$
         // addOption(adv, OptionsConstants.GUNNERY_MARKSMAN, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_MULTI_TASKER, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.PILOT_APTITUDE_GUNNERY, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_OBLIQUE_ARTILLERY, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_OBLIQUE_ATTACKER, false); //$NON-NLS-1$
-        addOption(adv, OptionsConstants.GUNNERY_RANGE_MASTER,  new Vector<String>()); //$NON-NLS-1$
+        addOption(adv, OptionsConstants.GUNNERY_RANGE_MASTER); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_SANDBLASTER, false); //$NON-NLS-1$
         // addOption(adv, OptionsConstants.GUNNERY_SHARPSHOOTER, false); //$NON-NLS-1$
         addOption(adv, OptionsConstants.GUNNERY_SNIPER, false); //$NON-NLS-1$
-        addOption(adv, OptionsConstants.GUNNERY_WEAPON_SPECIALIST, new Vector<String>()); //$NON-NLS-1$
+        addOption(adv, OptionsConstants.GUNNERY_WEAPON_SPECIALIST); //$NON-NLS-1$
 
          // Misc Abilities
          // addOption(adv, OptionsConstants.MISC_ANTAGONIZER, false); //$NON-NLS-1$
@@ -89,7 +87,7 @@ public class PilotOptions extends AbstractOptions {
          addOption(adv, OptionsConstants.MISC_EAGLE_EYES, false); //$NON-NLS-1$
          // addOption(adv, OptionsConstants.MISC_ENV_SPECIALIST, false); //$NON-NLS-1$
          addOption(adv, OptionsConstants.MISC_FORWARD_OBSERVER, false); //$NON-NLS-1$
-         addOption(adv, OptionsConstants.MISC_HUMAN_TRO, new Vector<String>()); //$NON-NLS-1$
+        addOption(adv, OptionsConstants.MISC_HUMAN_TRO); //$NON-NLS-1$
          addOption(adv, OptionsConstants.MISC_IRON_MAN, false); //$NON-NLS-1$
          addOption(adv, OptionsConstants.MISC_PAIN_RESISTANCE, false); //$NON-NLS-1$
          addOption(adv, OptionsConstants.MISC_TACTICAL_GENIUS, false); //$NON-NLS-1$
