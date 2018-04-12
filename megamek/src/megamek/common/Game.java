@@ -25,6 +25,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -47,6 +48,9 @@ import megamek.common.event.GamePhaseChangeEvent;
 import megamek.common.event.GamePlayerChangeEvent;
 import megamek.common.event.GameSettingsChangeEvent;
 import megamek.common.event.GameTurnChangeEvent;
+import megamek.common.logging.DefaultMmLogger;
+import megamek.common.logging.LogLevel;
+import megamek.common.logging.MMLogger;
 import megamek.common.options.GameOptions;
 import megamek.common.options.OptionsConstants;
 import megamek.common.weapons.AttackHandler;
@@ -63,6 +67,7 @@ public class Game implements Serializable, IGame {
      *
      */
     private static final long serialVersionUID = 8376320092671792532L;
+    private static final MMLogger LOGGER = DefaultMmLogger.getInstance();
 
     /**
      * Define constants to describe the condition a unit was in when it wass
@@ -330,7 +335,8 @@ public class Game implements Serializable, IGame {
 
     public void setOptions(final GameOptions options) {
         if (null == options) {
-            System.err.println("Can't set the game options to null!");
+            LOGGER.log(getClass(), "setOptions(GameOptions)",
+                       new NullPointerException("Can't set the game options to null!"));
         } else {
             this.options = options;
             processGameEvent(new GameSettingsChangeEvent(this));
@@ -1607,8 +1613,8 @@ public class Game implements Serializable, IGame {
                     // Sanity check
                     final HashSet<Coords> positions = e.getOccupiedCoords();
                     if (!positions.contains(c)) {
-                        System.out.println("Game.getEntitiesVector(1) Error! "
-                                + e.getDisplayName() + " is not in " + c + "!");
+                        LOGGER.log(getClass(), "getEntitiesVector(Coords, ignore)",
+                                   new NoSuchElementException(e.getDisplayName() + " is not in " + c + "!"));
                     }
                 }
             }
@@ -3463,7 +3469,8 @@ public class Game implements Serializable, IGame {
 
     public void setPlanetaryConditions(final PlanetaryConditions conditions) {
         if (null == conditions) {
-            System.err.println("Can't set the planetary conditions to null!");
+            LOGGER.log(getClass(), "setPlanetaryConditions(PlanetaryConditions)",
+                       new NullPointerException("Can't set the planetary conditions to null!"));
         } else {
             planetaryConditions.alterConditions(conditions);
             processGameEvent(new GameSettingsChangeEvent(this));
@@ -3554,6 +3561,8 @@ public class Game implements Serializable, IGame {
      */
     @SuppressWarnings("unused")
     private void checkPositionCacheConsistency() {
+        final String methodName = "checkPositionCacheConsistency()";
+        
         // Sanity check on the position cache
         //  This could be removed once we are confident the cache is working
         final List<Integer> entitiesInCache = new ArrayList<>();
@@ -3574,25 +3583,25 @@ public class Game implements Serializable, IGame {
             && (Phase.PHASE_LOUNGE != getPhase())
             && (Phase.PHASE_INITIATIVE_REPORT != getPhase())
             && (Phase.PHASE_INITIATIVE != getPhase())) {
-            System.out.println("Entities vector has " + entities.size()
-                    + " but pos lookup cache has " + entitiesInCache.size()
-                    + " entities!");
+            LOGGER.log(getClass(), methodName,
+                       new RuntimeException("Entities vector has " + entities.size() + " but pos lookup cache has " +
+                                            entitiesInCache.size() + " entities!"));
             final List<Integer> missingIds = new ArrayList<>();
             for (final Integer id : entitiesInVector) {
                 if (!entitiesInCache.contains(id)) {
                     missingIds.add(id);
                 }
             }
-            System.out.println("Missing ids: " + missingIds);
+            LOGGER.log(getClass(), methodName, LogLevel.WARNING, "Missing ids: " + missingIds);
         }
         for (final Entity e : entities) {
             final HashSet<Coords> positions = e.getOccupiedCoords();
             for (final Coords c : positions) {
                 final HashSet<Integer> ents = entityPosLookup.get(c);
                 if ((null != ents) && !ents.contains(e.getId())) {
-                    System.out.println("Entity " + e.getId() + " is in "
-                            + e.getPosition() + " however the position cache "
-                            + "does not have it in that position!");
+                    LOGGER.log(getClass(), methodName,
+                               new RuntimeException("Entity " + e.getId() + " is in " + e.getPosition() +
+                                                    " however the position cache does not have it in that position!"));
                 }
             }
         }
@@ -3604,10 +3613,9 @@ public class Game implements Serializable, IGame {
                 }
                 final HashSet<Coords> positions = e.getOccupiedCoords();
                 if (!positions.contains(c)) {
-                    System.out.println("Entity Position Cache thinks Entity "
-                            + eId + "is in " + c
-                            + " but the Entity thinks it's in "
-                            + e.getPosition());
+                    LOGGER.log(getClass(), methodName,
+                               new RuntimeException("Entity Position Cache thinks Entity " + eId + "is in " + c +
+                                                    " but the Entity thinks it's in " + e.getPosition()));
                 }
             }
         }
