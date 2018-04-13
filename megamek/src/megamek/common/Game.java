@@ -29,6 +29,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import megamek.common.GameTurn.SpecificEntityTurn;
 import megamek.common.actions.ArtilleryAttackAction;
@@ -75,6 +76,7 @@ public class Game implements Serializable, IGame {
      */
 
     private GameOptions options = new GameOptions();
+    private final ReentrantReadWriteLock optionsLock = new ReentrantReadWriteLock();
 
     public IBoard board = new Board();
 
@@ -329,17 +331,78 @@ public class Game implements Serializable, IGame {
         return vibrabombs.contains(mf);
     }
 
+    /* Marked as depreciated to encourage use of the new pass-through methods (getBooleanOption, getStringOption, etc)
+       so that we're not constantly making copies of the GameOptions collection.  Hopefully, over time, old code will
+       be refactored to use the new methods and we won't have to worry about GameOptions escaping at all.
+    */
+    @Deprecated
     public GameOptions getOptions() {
-        return options;
+        optionsLock.readLock().lock();
+        try {
+            return GameOptions.copy(options);
+        } finally {
+            optionsLock.readLock().unlock();
+        }
     }
 
+    @Override
+    public boolean getBooleanOption(final String optionName) {
+        optionsLock.readLock().lock();
+        try {
+            return options.booleanOption(optionName);
+        } finally {
+            optionsLock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public int getIntegerOption(final String optionName) {
+        optionsLock.readLock().lock();
+        try {
+            return options.intOption(optionName);
+        } finally {
+            optionsLock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public String getStringOption(final String optionName) {
+        optionsLock.readLock().lock();
+        try {
+            return options.stringOption(optionName);
+        } finally {
+            optionsLock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public float getFloatOption(final String optionName) {
+        optionsLock.readLock().lock();
+        try {
+            return options.getOption(optionName).floatValue();
+        } finally {
+            optionsLock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Replaces teh existing game options with the passed Game Options.
+     *
+     * @param options The new game options to be used.
+     */
     public void setOptions(final GameOptions options) {
         if (null == options) {
             LOGGER.log(getClass(), "setOptions(GameOptions)",
                        new NullPointerException("Can't set the game options to null!"));
-        } else {
+            return;
+        }
+
+        optionsLock.writeLock().lock();
+        try {
             this.options = options;
             processGameEvent(new GameSettingsChangeEvent(this));
+        } finally {
+            optionsLock.writeLock().unlock();
         }
     }
 

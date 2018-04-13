@@ -305,9 +305,21 @@ public interface IGame {
     abstract boolean containsVibrabomb(Minefield mf);
 
     /**
-     * @return game options
+     * Returns a defensive copy of the game options.
+     *
+     * @deprecated Use {@link #getBooleanOption(String)}, {@link #getStringOption(String)}, 
+     * {@link #getIntegerOption(String)} or {@link #getFloatOption(String)} instead.
      */
+    @Deprecated
     abstract GameOptions getOptions();
+
+    boolean getBooleanOption(String optionName);
+
+    int getIntegerOption(String optionName);
+
+    String getStringOption(String optionName);
+
+    float getFloatOption(String optionName);
 
     /**
      * sets the game options

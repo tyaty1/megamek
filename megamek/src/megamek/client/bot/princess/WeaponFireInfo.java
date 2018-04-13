@@ -379,8 +379,8 @@ public class WeaponFireInfo {
             for(int weaponID : weapon.getBayWeapons()) {
                 Mounted bayWeapon = weapon.getEntity().getEquipment(weaponID);
                 WeaponType weaponType = (WeaponType) bayWeapon.getType();
-                int maxRange = game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE) ?
-                        weaponType.getExtremeRange() : weaponType.getLongRange(); 
+                int maxRange = game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE) ?
+                               weaponType.getExtremeRange() : weaponType.getLongRange(); 
                 int targetDistance = getShooter().getPosition().distance(getTarget().getPosition());
                 
                 // if the particular weapon is within range or we're an aircraft strafing a ground unit

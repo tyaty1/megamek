@@ -15,6 +15,7 @@
 package megamek.common.options;
 
 import java.io.File;
+import java.util.Enumeration;
 import java.util.Vector;
 
 import javax.xml.bind.JAXBContext;
@@ -45,6 +46,29 @@ public class GameOptions extends AbstractOptions {
 
     public GameOptions() {
         super();
+    }
+
+    /**
+     * Creates a fresh copy of the provided {@link GameOptions} collection.
+     *
+     * @param toCopy The collection to be copied.
+     * @return The new collection.
+     */
+    public static GameOptions copy(final GameOptions toCopy) {
+        final GameOptions copy = new GameOptions();
+
+        final Enumeration<IOptionGroup> groupsEnum = toCopy.getGroups();
+        while (groupsEnum.hasMoreElements()) {
+            final IOptionGroup group = groupsEnum.nextElement();
+            copy.addGroup(group.getName(), group.getKey());
+            final Enumeration<IOption> optionsEnum = group.getOptions();
+            while (optionsEnum.hasMoreElements()) {
+                final IOption option = optionsEnum.nextElement();
+                copy.addOption(group, option.getName(), option.getType(), option.getDefault());
+            }
+        }
+
+        return copy;
     }
 
     @Override

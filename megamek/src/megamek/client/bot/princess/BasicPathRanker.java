@@ -531,12 +531,8 @@ public class BasicPathRanker extends PathRanker {
             double expectedDamageTaken = checkPathForHazards(pathCopy,
                                                              movingUnit,
                                                              game);
-            boolean extremeRange = game.getOptions()
-                                       .booleanOption(
-                                               OptionsConstants.ADVCOMBAT_TACOPS_RANGE);
-            boolean losRange = game.getOptions()
-                                   .booleanOption(
-                                           OptionsConstants.ADVCOMBAT_TACOPS_LOS_RANGE);
+            boolean extremeRange = game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE);
+            boolean losRange = game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_LOS_RANGE);
             for (Entity enemy : enemies) {
 
                 // Skip ejected pilots.
@@ -615,8 +611,7 @@ public class BasicPathRanker extends PathRanker {
             // If I cannot kick because I am a clan unit and "No physical 
             // attacks for the clans"
             // is enabled, set maximum physical damage for this path to zero.
-            if (game.getOptions()
-                    .booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) &&
+            if (game.getBooleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) &&
                 path.getEntity().isClan()) {
                 maximumPhysicalDamage = 0;
             }

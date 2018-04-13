@@ -1035,7 +1035,7 @@ public class Princess extends BotClient {
     }
 
     boolean getBooleanOption(final String name) {
-        return getGame().getOptions().booleanOption(name);
+        return getGame().getBooleanOption(name);
     }
 
     protected IHex getHex(final Coords coords) {

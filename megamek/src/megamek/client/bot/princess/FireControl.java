@@ -358,7 +358,7 @@ public class FireControl {
         if (targetState.isImmobile() && !target.isHexBeingBombed()) {
             toHitData.addModifier(TH_TAR_IMMOBILE);
         }
-        if (game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_STANDING_STILL)
+        if (game.getBooleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_STANDING_STILL)
             && (EntityMovementType.MOVE_NONE == targetState.getMovementType())
             && !targetState.isImmobile()
             && !((target instanceof Infantry) || (target instanceof VTOL) ||
@@ -572,7 +572,7 @@ public class FireControl {
             }
         }
 
-        if (game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_PHYSICAL_ATTACK_PSR)) {
+        if (game.getBooleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_PHYSICAL_ATTACK_PSR)) {
             if (EntityWeightClass.WEIGHT_LIGHT == shooter.getWeightClass()) {
                 toHitData.addModifier(TH_PHY_LIGHT);
             } else if (EntityWeightClass.WEIGHT_MEDIUM == shooter.getWeightClass()) {
@@ -799,8 +799,8 @@ public class FireControl {
             }
         }
         int range = RangeType.rangeBracket(distance, weaponType.getRanges(weapon),
-                                           game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE),
-                                           game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_LOS_RANGE));
+                                           game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE),
+                                           game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_LOS_RANGE));
         if (RangeType.RANGE_OUT == range) {
             return new ToHitData(TH_OUT_OF_RANGE);
         } else if ((RangeType.RANGE_MINIMUM == range) && targetState.isAirborneAero()) {
