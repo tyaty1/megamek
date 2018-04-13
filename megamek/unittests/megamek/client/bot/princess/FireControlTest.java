@@ -67,6 +67,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Vector;
 
@@ -220,6 +221,7 @@ public class FireControlTest {
 
 
         mockGame = mock(IGame.class);
+        //noinspection deprecation
         when(mockGame.getOptions()).thenReturn(mockGameOptions);
         when(mockGame.getBoard()).thenReturn(mockBoard);
 
@@ -2593,7 +2595,7 @@ public class FireControlTest {
                 failure.append("\nActual[").append(i).append("]:   ").append(actualArray[i].getDebugDescription(true));
                 continue;
             }
-            if (!expected[i].equals(actualArray[i])) {
+            if (!Objects.equals(expected[i], actualArray[i])) {
                 failure.append("\nExpected[").append(i).append("]: ").append(expected[i].getDebugDescription(true));
                 if (null == actualArray[i]) {
                     failure.append("\nActual[").append(i).append("]:   null");

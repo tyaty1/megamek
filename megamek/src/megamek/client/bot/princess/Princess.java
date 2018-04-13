@@ -99,9 +99,9 @@ public class Princess extends BotClient {
     private boolean fleeBoard = false;
     private final IMoralUtil moralUtil = new MoralUtil(getLogger());
     private final Set<Integer> attackedWhileFleeing =
-            Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+            Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Integer> myFleeingEntities =
-            Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+            Collections.newSetFromMap(new ConcurrentHashMap<>());
     private MMLogger logger = null;
 
 
@@ -563,11 +563,12 @@ public class Princess extends BotClient {
         }
     }
 
-    protected Vector<EntityAction> calculatePointBlankShot(int firingEntityID, int targetID) {
-        Entity shooter = getGame().getEntity(firingEntityID);
-        Targetable target = getGame().getEntity(targetID); 
-        
-        FiringPlan plan = fireControl.getBestFiringPlan(shooter, target, game, calcAmmoConservation(shooter));
+    protected Vector<EntityAction> calculatePointBlankShot(final int firingEntityID,
+                                                           final int targetID) {
+        final Entity shooter = getGame().getEntity(firingEntityID);
+        final Targetable target = getGame().getEntity(targetID);
+
+        final FiringPlan plan = fireControl.getBestFiringPlan(shooter, target, game, calcAmmoConservation(shooter));
         fireControl.loadAmmo(shooter, plan);
         plan.sortPlan();
 
@@ -1678,21 +1679,21 @@ public class Princess extends BotClient {
         if(getBehaviorSettings().shouldGoHome()) {
             return;
         }
-        
-        Entity movingEntity = path.getPath().getEntity();
-        Coords pathEndpoint = path.getPath().getFinalCoords();
-        Entity closestEnemy = getPathRanker().findClosestEnemy(movingEntity, pathEndpoint, getGame());
+
+        final Entity movingEntity = path.getPath().getEntity();
+        final Coords pathEndpoint = path.getPath().getFinalCoords();
+        final Entity closestEnemy = getPathRanker().findClosestEnemy(movingEntity, pathEndpoint, getGame());
 
         // if there are no enemies on the board, then we're not unloading anything.
         if(null == closestEnemy) {
             return;
         }
-        
-        int distanceToClosestEnemy = pathEndpoint.distance(closestEnemy.getPosition());
+
+        final int distanceToClosestEnemy = pathEndpoint.distance(closestEnemy.getPosition());
         
         // loop through all entities carried by the current entity
-        for(Transporter transport : movingEntity.getTransports()) {
-            for(Entity loadedEntity : transport.getLoadedUnits()) {
+        for (final Transporter transport : movingEntity.getTransports()) {
+            for (final Entity loadedEntity : transport.getLoadedUnits()) {
                 // favorable conditions include: 
                 // - the loaded entity should be able to enter the current terrain
                 // - the loaded entity should be within max weapons range + movement range of an enemy
@@ -1701,15 +1702,18 @@ public class Princess extends BotClient {
                 
                 // this condition is a simple check that we're not unloading infantry into deep space
                 // or into lava or some other such nonsense
-                boolean unloadFatal = loadedEntity.isBoardProhibited(getGame().getBoard().getType()) ||
-                        loadedEntity.isLocationProhibited(pathEndpoint);
+                final boolean unloadFatal = loadedEntity.isBoardProhibited(getGame().getBoard().getType()) ||
+                                            loadedEntity.isLocationProhibited(pathEndpoint);
                 
                 // Unloading a unit may sometimes cause a stacking violation, take that into account when planning
-                boolean unloadIllegal = Compute.stackingViolation(getGame(), loadedEntity, pathEndpoint, movingEntity) != null;
+                final boolean unloadIllegal = null != Compute.stackingViolation(getGame(),
+                                                                                loadedEntity,
+                                                                                pathEndpoint,
+                                                                                movingEntity);
                 
                 // this is a primitive condition that checks whether we're within "engagement range" of an enemy
                 // where "engagement range" is defined as the maximum range of our weapons plus our walking movement
-                boolean inEngagementRange = loadedEntity.getWalkMP() + loadedEntity.getMaxWeaponRange() >= distanceToClosestEnemy;
+                final boolean inEngagementRange = loadedEntity.getWalkMP() + loadedEntity.getMaxWeaponRange() >= distanceToClosestEnemy;
                 
                 if(!unloadFatal && !unloadIllegal && inEngagementRange) {
                     path.getPath().addStep(MoveStepType.UNLOAD, loadedEntity, pathEndpoint);

@@ -374,14 +374,14 @@ public class WeaponFireInfo {
         // bay weapons require special consideration, by looping through all weapons and adding up the damage
         // A bay's weapons may have different ranges, most noticeable in laser bays, where the damage potential
         // varies with distance to target.
-        if((null != weapon.getBayWeapons()) && (weapon.getBayWeapons().size() > 0)) {
+        if ((null != weapon.getBayWeapons()) && (0 < weapon.getBayWeapons().size())) {
             int bayDamage = 0;
-            for(int weaponID : weapon.getBayWeapons()) {
-                Mounted bayWeapon = weapon.getEntity().getEquipment(weaponID);
-                WeaponType weaponType = (WeaponType) bayWeapon.getType();
-                int maxRange = game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE) ?
-                               weaponType.getExtremeRange() : weaponType.getLongRange(); 
-                int targetDistance = getShooter().getPosition().distance(getTarget().getPosition());
+            for (final int weaponID : weapon.getBayWeapons()) {
+                final Mounted bayWeapon = weapon.getEntity().getEquipment(weaponID);
+                final WeaponType weaponType = (WeaponType) bayWeapon.getType();
+                final int maxRange = game.getBooleanOption(OptionsConstants.ADVCOMBAT_TACOPS_RANGE) ?
+                                     weaponType.getExtremeRange() : weaponType.getLongRange();
+                final int targetDistance = getShooter().getPosition().distance(getTarget().getPosition());
                 
                 // if the particular weapon is within range or we're an aircraft strafing a ground unit
                 // then we can count it. Otherwise, it's not going to contribute to damage, and we want 
@@ -603,7 +603,7 @@ public class WeaponFireInfo {
                         getTarget().getTargetId(), getShooter().getEquipmentNum(getWeapon()),
                         getGame()));
             }
-            if (getAction() == null) {
+            if (null == getAction()) {
                 setProbabilityToHit(0);
                 return null;
             }

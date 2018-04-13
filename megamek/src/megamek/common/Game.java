@@ -161,6 +161,7 @@ public class Game implements Serializable, IGame {
     private HashMap<String, Object> victoryContext = null;
 
     // internal integer value for an external game id link
+    @SuppressWarnings({ "unused", "FieldCanBeLocal" })
     private int externalGameId = 0;
 
     // victory condition related stuff
@@ -176,11 +177,6 @@ public class Game implements Serializable, IGame {
      */
     public Game() {
         // empty
-    }
-
-    // Added public accessors for external game id
-    public int getExternalGameId() {
-        return externalGameId;
     }
 
     public void setExternalGameId(final int value) {
@@ -450,8 +446,7 @@ public class Game implements Serializable, IGame {
      */
     public void setupTeams() {
         final Vector<Team> initTeams = new Vector<>();
-        final boolean useTeamInit = getOptions().getOption(OptionsConstants.BASE_TEAM_INITIATIVE)
-                                                .booleanValue();
+        final boolean useTeamInit = getBooleanOption(OptionsConstants.BASE_TEAM_INITIATIVE);
 
         // Get all NO_TEAM players. If team_initiative is false, all
         // players are on their own teams for initiative purposes.
@@ -578,39 +573,6 @@ public class Game implements Serializable, IGame {
     }
 
     /**
-     * Returns the number of entities owned by the player, regardless of their
-     * status.
-     */
-    public int getAllEntitiesOwnedBy(final IPlayer player) {
-        int count = 0;
-        for (final Entity entity : entities) {
-            if (entity.getOwner().equals(player)) {
-                count++;
-            }
-        }
-        for (final Entity entity : vOutOfGame) {
-            if (entity.getOwner().equals(player)) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    /**
-     * Returns the number of non-destroyed entityes owned by the player
-     */
-    public int getLiveEntitiesOwnedBy(final IPlayer player) {
-        int count = 0;
-        for (final Entity entity : entities) {
-            if (entity.getOwner().equals(player) && !entity.isDestroyed()
-                    && !entity.isCarcass()) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    /**
      * Returns the number of non-destroyed entities owned by the player,
      * including entities not yet deployed. Ignore offboard units and captured
      * Mek pilots.
@@ -666,7 +628,7 @@ public class Game implements Serializable, IGame {
     public List<Entity> getValidTargets(final Entity entity) {
         final List<Entity> ents = new ArrayList<>();
 
-        final boolean friendlyFire = getOptions().booleanOption(OptionsConstants.BASE_FRIENDLY_FIRE);
+        final boolean friendlyFire = getBooleanOption(OptionsConstants.BASE_FRIENDLY_FIRE);
 
         for (final Entity otherEntity : entities) {
             // Even if friendly fire is acceptable, do not shoot yourself
@@ -940,24 +902,6 @@ public class Game implements Serializable, IGame {
      */
     public void clearDeploymentThisRound() {
         deploymentTable.remove(getRoundCount());
-    }
-
-    /**
-     * Returns a vector of entities that have not yet deployed
-     */
-    public List<Entity> getUndeployedEntities() {
-        final List<Entity> entList = new ArrayList<>();
-        final Enumeration<Vector<Entity>> iter = deploymentTable.elements();
-
-        while (iter.hasMoreElements()) {
-            final Vector<Entity> vecTemp = iter.nextElement();
-
-            for (int i = 0; i < vecTemp.size(); i++) {
-                entList.add(vecTemp.elementAt(i));
-            }
-        }
-
-        return Collections.unmodifiableList(entList);
     }
 
     /**
@@ -1382,7 +1326,7 @@ public class Game implements Serializable, IGame {
 
         // And... lets get this straight now.
         if ((entity instanceof Mech)
-            && getOptions().booleanOption(OptionsConstants.RPG_CONDITIONAL_EJECTION)) {
+            && getBooleanOption(OptionsConstants.RPG_CONDITIONAL_EJECTION)) {
             ((Mech) entity).setAutoEject(true);
             if (entity.hasCase()
                 || ((Mech) entity).hasCASEIIAnywhere()) {
@@ -2038,27 +1982,6 @@ public class Game implements Serializable, IGame {
     }
 
     /**
-     * Get the entities for the player.
-     *
-     * @param player - the <code>Player</code> whose entities are required.
-     * @param hide   - should fighters loaded into squadrons be excluded from this list?
-     * @return a <code>Vector</code> of <code>Entity</code>s.
-     */
-    public ArrayList<Integer> getPlayerEntityIds(final IPlayer player,
-                                                 final boolean hide) {
-        final ArrayList<Integer> output = new ArrayList<>();
-        for (final Entity entity : entities) {
-            if (entity.isPartOfFighterSquadron() && hide) {
-                continue;
-            }
-            if (player.equals(entity.getOwner())) {
-                output.add(entity.getId());
-            }
-        }
-        return output;
-    }
-
-    /**
      * Determines if the indicated entity is stranded on a transport that can't
      * move.
      * <p/>
@@ -2200,10 +2123,10 @@ public class Game implements Serializable, IGame {
         // then we might not need to remove a turn at all.
         // A turn only needs to be removed when going from 4 inf (2 turns) to
         // 3 inf (1 turn)
-        if (getOptions().booleanOption(OptionsConstants.INIT_INF_MOVE_MULTI)
+        if (getBooleanOption(OptionsConstants.INIT_INF_MOVE_MULTI)
             && (entity instanceof Infantry)
             && (Phase.PHASE_MOVEMENT == phase)) {
-            if (1 != (getInfantryLeft(entity.getOwnerId()) % getOptions().intOption(
+            if (1 != (getInfantryLeft(entity.getOwnerId()) % getIntegerOption(
                     OptionsConstants.INIT_INF_PROTO_MOVE_MULTI))) {
                 // exception, if the _next_ turn is an infantry turn, remove
                 // that
@@ -2224,11 +2147,10 @@ public class Game implements Serializable, IGame {
             }
         }
         // Same thing but for protos
-        if (getOptions().booleanOption(OptionsConstants.INIT_PROTOS_MOVE_MULTI)
+        if (getBooleanOption(OptionsConstants.INIT_PROTOS_MOVE_MULTI)
             && (entity instanceof Protomech)
             && (Phase.PHASE_MOVEMENT == phase)) {
-            if (1 != (getProtomechsLeft(entity.getOwnerId()) % getOptions()
-                    .intOption(OptionsConstants.INIT_INF_PROTO_MOVE_MULTI))) {
+            if (1 != (getProtomechsLeft(entity.getOwnerId()) % getIntegerOption(OptionsConstants.INIT_INF_PROTO_MOVE_MULTI))) {
                 // exception, if the _next_ turn is an protomek turn, remove
                 // that
                 // contrived, but may come up e.g. one inf accidently kills
@@ -2249,10 +2171,9 @@ public class Game implements Serializable, IGame {
         }
 
         // Same thing but for vehicles
-        if (getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_VEHICLE_LANCE_MOVEMENT)
+        if (getBooleanOption(OptionsConstants.ADVGRNDMOV_VEHICLE_LANCE_MOVEMENT)
             && (entity instanceof Tank) && (Phase.PHASE_MOVEMENT == phase)) {
-            if (1 != (getVehiclesLeft(entity.getOwnerId()) % getOptions()
-                    .intOption(OptionsConstants.ADVGRNDMOV_VEHICLE_LANCE_MOVEMENT_NUMBER))) {
+            if (1 != (getVehiclesLeft(entity.getOwnerId()) % getIntegerOption(OptionsConstants.ADVGRNDMOV_VEHICLE_LANCE_MOVEMENT_NUMBER))) {
                 // exception, if the _next_ turn is a tank turn, remove that
                 // contrived, but may come up e.g. one tank accidently kills
                 // another
@@ -2272,10 +2193,9 @@ public class Game implements Serializable, IGame {
         }
 
         // Same thing but for meks
-        if (getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_MEK_LANCE_MOVEMENT)
+        if (getBooleanOption(OptionsConstants.ADVGRNDMOV_MEK_LANCE_MOVEMENT)
             && (entity instanceof Mech) && (Phase.PHASE_MOVEMENT == phase)) {
-            if (1 != (getMechsLeft(entity.getOwnerId()) % getOptions()
-                    .intOption(OptionsConstants.ADVGRNDMOV_MEK_LANCE_MOVEMENT_NUMBER))) {
+            if (1 != (getMechsLeft(entity.getOwnerId()) % getIntegerOption(OptionsConstants.ADVGRNDMOV_MEK_LANCE_MOVEMENT_NUMBER))) {
                 // exception, if the _next_ turn is a mech turn, remove that
                 // contrived, but may come up e.g. one mech accidently kills
                 // another
@@ -2300,9 +2220,9 @@ public class Game implements Serializable, IGame {
         //  rules, then we may be removing an infantry unit that would be
         //  considered invalid unless we don't consider the extra validity
         //  checks.
-        if ((getOptions().booleanOption(OptionsConstants.INIT_INF_MOVE_LATER) &&
+        if ((getBooleanOption(OptionsConstants.INIT_INF_MOVE_LATER) &&
              (entity instanceof Infantry)) ||
-            (getOptions().booleanOption(OptionsConstants.INIT_PROTOS_MOVE_LATER) &&
+            (getBooleanOption(OptionsConstants.INIT_PROTOS_MOVE_LATER) &&
              (entity instanceof Protomech))) {
             useInfantryMoveLaterCheck = false;
         }
@@ -2432,10 +2352,6 @@ public class Game implements Serializable, IGame {
         return offboardArtilleryAttacks.elements();
     }
 
-    public int getArtillerySize() {
-        return offboardArtilleryAttacks.size();
-    }
-
     /**
      * Returns an Enumeration of actions scheduled for this phase.
      */
@@ -2490,7 +2406,7 @@ public class Game implements Serializable, IGame {
     }
 
     public void rollInitAndResolveTies() {
-        if (getOptions().booleanOption(OptionsConstants.RPG_INDIVIDUAL_INITIATIVE)) {
+        if (getBooleanOption(OptionsConstants.RPG_INDIVIDUAL_INITIATIVE)) {
             final Vector<TurnOrdered> vRerolls = new Vector<>();
             for (final Entity e : entities) {
                 if (initiativeRerollRequests.contains(getTeamForPlayer(e.getOwner()))) {
@@ -2500,15 +2416,16 @@ public class Game implements Serializable, IGame {
             TurnOrdered.rollInitAndResolveTies(getEntitiesVector(), vRerolls, false);
         } else {
             TurnOrdered.rollInitAndResolveTies(teams, initiativeRerollRequests,
-                    getOptions().booleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION));
+                                               getBooleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION));
         }
         initiativeRerollRequests.removeAllElements();
 
     }
     
     public void handleInitiativeCompensation() {
-        if (getOptions().booleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION)) {
-            TurnOrdered.resetInitiativeCompensation(teams, getOptions().booleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION));
+        if (getBooleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION)) {
+            TurnOrdered.resetInitiativeCompensation(teams,
+                                                    getBooleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION));
         }
     }
 
@@ -2705,15 +2622,6 @@ public class Game implements Serializable, IGame {
     }
 
     /**
-     * remove an AttackHandler from the attacks list
-     *
-     * @param ah - The <code>AttackHandler</code> to remove
-     */
-    public void removeAttack(final AttackHandler ah) {
-        attacks.removeElement(ah);
-    }
-
-    /**
      * get the attacks
      *
      * @return a <code>Enumeration</code> of all <code>AttackHandler</code>s
@@ -2853,30 +2761,12 @@ public class Game implements Serializable, IGame {
         this.victoryTeam = victoryTeam;
     }
 
-    /**
-     * Returns true if the specified player is either the victor, or is on the
-     * winning team. Best to call during PHASE_VICTORY.
-     */
-    public boolean isPlayerVictor(final IPlayer player) {
-        if (IPlayer.TEAM_NONE == player.getTeam()) {
-            return player.getId() == victoryPlayerId;
-        }
-        return player.getTeam() == victoryTeam;
-    }
-
     public HashMap<String, Object> getVictoryContext() {
         return victoryContext;
     }
 
     public void setVictoryContext(final HashMap<String, Object> ctx) {
         victoryContext = ctx;
-    }
-
-    /**
-     * Shortcut to isPlayerVictor(Player player)
-     */
-    public boolean isPlayerVictor(final int playerId) {
-        return isPlayerVictor(getPlayer(playerId));
     }
 
     /**
@@ -3094,10 +2984,10 @@ public class Game implements Serializable, IGame {
         for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
             boolean excluded = false;
             if ((entity instanceof Infantry)
-                && getOptions().booleanOption(OptionsConstants.INIT_INF_MOVE_LATER)) {
+                && getBooleanOption(OptionsConstants.INIT_INF_MOVE_LATER)) {
                 excluded = true;
             } else if ((entity instanceof Protomech)
-                       && getOptions().booleanOption(OptionsConstants.INIT_PROTOS_MOVE_LATER)) {
+                       && getBooleanOption(OptionsConstants.INIT_PROTOS_MOVE_LATER)) {
                 excluded = true;
             }
 
@@ -3171,17 +3061,6 @@ public class Game implements Serializable, IGame {
             gameListeners = new Vector<>();
         }
         return Collections.unmodifiableList(gameListeners);
-    }
-
-    /**
-     * purges all Game Listener objects.
-     */
-    public void purgeGameListeners() {
-        // Since gameListeners is transient, it could be null
-        if (null == gameListeners) {
-            gameListeners = new Vector<>();
-        }
-        gameListeners.clear();
     }
 
     /**
@@ -3410,11 +3289,12 @@ public class Game implements Serializable, IGame {
     }
 
     public boolean gameTimerIsExpired() {
-        return ((getOptions().booleanOption(OptionsConstants.VICTORY_USE_GAME_TURN_LIMIT)) && (getRoundCount() == getOptions()
-                .intOption(OptionsConstants.VICTORY_GAME_TURN_LIMIT)));
+        return ((getBooleanOption(OptionsConstants.VICTORY_USE_GAME_TURN_LIMIT)) && (getRoundCount() == getIntegerOption(
+                OptionsConstants.VICTORY_GAME_TURN_LIMIT)));
     }
 
     public void createVictoryConditions() {
+        //noinspection deprecation
         victory = new Victory(getOptions());
     }
 
@@ -3425,7 +3305,7 @@ public class Game implements Serializable, IGame {
     // a shortcut function for determining whether vectored movement is
     // applicable
     public boolean useVectorMove() {
-        return getOptions().booleanOption(OptionsConstants.ADVAERORULES_ADVANCED_MOVEMENT)
+        return getBooleanOption(OptionsConstants.ADVAERORULES_ADVANCED_MOVEMENT)
                && board.inSpace();
     }
 
@@ -3470,60 +3350,6 @@ public class Game implements Serializable, IGame {
      */
     public void resetControlRolls() {
         controlRolls.removeAllElements();
-    }
-
-    /**
-     * A set of checks for aero units to make sure that the movement order is
-     * maintained
-     */
-    public boolean checkForValidSpaceStations(final int playerId) {
-        for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
-            if ((entity instanceof SpaceStation)
-                && getTurn().isValidEntity(entity, this)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean checkForValidJumpships(final int playerId) {
-        for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
-            if ((entity instanceof Jumpship) && !(entity instanceof Warship)
-                && getTurn().isValidEntity(entity, this)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean checkForValidWarships(final int playerId) {
-        for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
-            if ((entity instanceof Warship)
-                && getTurn().isValidEntity(entity, this)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean checkForValidDropships(final int playerId) {
-        for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
-            if ((entity instanceof Dropship)
-                && getTurn().isValidEntity(entity, this)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean checkForValidSmallCraft(final int playerId) {
-        for (final Entity entity : getPlayerEntities(getPlayer(playerId), false)) {
-            if ((entity instanceof SmallCraft)
-                && getTurn().isValidEntity(entity, this)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public PlanetaryConditions getPlanetaryConditions() {

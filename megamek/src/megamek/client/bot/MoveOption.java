@@ -1,4 +1,4 @@
-/**
+/*
  * MegaMek -
  * Copyright (C) 2003,2004,2005 Ben Mazur (bmazur@sev.org)
  *
@@ -48,75 +48,72 @@ public class MoveOption extends MovePath {
 
     public static class WeightedComparator implements Comparator<MoveOption> {
 
-        private double utility_weight;
-        private double damage_weight;
+        private final double utility_weight;
+        private final double damage_weight;
 
-        public WeightedComparator(double utility, double damage) {
+        public WeightedComparator(final double utility,
+                                  final double damage) {
             utility_weight = utility;
             damage_weight = damage;
         }
 
-        public int compare(MoveOption e0, MoveOption e1) {
-            if (((damage_weight * e0.damage) - (utility_weight * e0.getUtility())) > ((damage_weight
-                    * e1.damage) - (utility_weight * e1.getUtility()))) {
-                return -1;
-            }
-            else if (((damage_weight * e0.damage) - (utility_weight * e0.getUtility())) < ((damage_weight
-                    * e1.damage) - (utility_weight * e1.getUtility()))) {
-                return 1;
-            } else {
-                return 0;
-            }
+        public int compare(final MoveOption e0,
+                           final MoveOption e1) {
+            return Double.compare((damage_weight
+                                   * e1.damage) - (utility_weight * e1.getUtility()),
+                                  (damage_weight * e0.damage) - (utility_weight * e0.getUtility()));
         }
     }
 
     public static class Table extends HashMap<MovePath.Key, MoveOption> {
         private static final long serialVersionUID = 5926883297848807149L;
 
-        public void put(MoveOption es) {
+        public void put(final MoveOption es) {
             this.put(es.getKey(), es);
         }
 
-        public MoveOption get(MoveOption es) {
+        public MoveOption get(final MoveOption es) {
             return super.get(es.getKey());
         }
 
-        public MoveOption remove(MoveOption es) {
+        public MoveOption remove(final MoveOption es) {
             return super.remove(es.getKey());
         }
 
         public ArrayList<MoveOption> getArray() {
-            return new ArrayList<MoveOption>(values());
+            return new ArrayList<>(values());
         }
     }
 
     public static class DistanceComparator implements Comparator<MoveOption> {
 
-        public int compare(MoveOption e0, MoveOption e1) {
+        public int compare(final MoveOption e0,
+                           final MoveOption e1) {
+            //noinspection ComparatorMethodParameterNotUsed
             return e0.getDistUtility() < e1.getDistUtility() ? -1 : 1;
         }
     }
 
-    public static class DamageInfo {
+    static class DamageInfo {
         double threat;
         double damage;
         double max_threat;
         double min_damage;
     }
 
-    public static final DistanceComparator DISTANCE_COMPARATOR = new DistanceComparator();
+    static final DistanceComparator DISTANCE_COMPARATOR = new DistanceComparator();
 
-    public static final int ATTACK_MOD = 0;
-    public static final int DEFENCE_MOD = 1;
-    public static final int ATTACK_PC = 2;
-    public static final int DEFENCE_PC = 3;
+    static final int ATTACK_MOD = 0;
+    static final int DEFENCE_MOD = 1;
+    static final int ATTACK_PC = 2;
+    static final int DEFENCE_PC = 3;
 
-    boolean utilityCalculated = false;
+    private boolean utilityCalculated = false;
     boolean inDanger = false;
     boolean doomed = false;
     boolean isPhysical = false;
 
-    double utility = 0;
+    private double utility = 0;
     double self_threat = 0;
     double movement_threat = 0;
     double self_damage = 0;
@@ -124,14 +121,15 @@ public class MoveOption extends MovePath {
     double damage = 0;
     double threat = 0;
 
-    private transient CEntity centity;
-    transient ArrayList<String> tv = new ArrayList<String>();
-    transient HashMap<CEntity, DamageInfo> damageInfos = new HashMap<CEntity, DamageInfo>();
+    private final transient CEntity centity;
+    transient ArrayList<String> tv = new ArrayList<>();
+    transient HashMap<CEntity, DamageInfo> damageInfos = new HashMap<>();
     private Coords pos;
     private int facing;
     private boolean prone;
 
-    public MoveOption(IGame game, CEntity centity) {
+    public MoveOption(final IGame game,
+                      final CEntity centity) {
         super(game, centity.entity);
         this.centity = centity;
         pos = centity.entity.getPosition();
@@ -139,13 +137,14 @@ public class MoveOption extends MovePath {
         prone = centity.entity.isProne();
     }
 
-    public MoveOption(MoveOption base) {
+    @SuppressWarnings("CopyConstructorMissesField")
+    public MoveOption(final MoveOption base) {
         this(base.getGame(), base.centity);
         replaceSteps(base.getStepVector());
         threat = base.threat;
         damage = base.damage;
         movement_threat = base.movement_threat;
-        tv = new ArrayList<String>(base.tv);
+        tv = new ArrayList<>(base.tv);
         self_threat = base.self_threat;
         inDanger = base.inDanger;
         doomed = base.doomed;
@@ -156,28 +155,31 @@ public class MoveOption extends MovePath {
         prone = base.prone;
     }
 
+    @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public MoveOption clone() {
         return new MoveOption(this);
     }
 
-    public double getThreat(CEntity e) {
+    double getThreat(final CEntity e) {
         return getDamageInfo(e, true).threat;
     }
 
-    public void setThreat(CEntity e, double value) {
+    void setThreat(final CEntity e,
+                   final double value) {
         getDamageInfo(e, true).threat = value;
     }
 
-    public double getMinDamage(CEntity e) {
+    double getMinDamage(final CEntity e) {
         return getDamageInfo(e, true).min_damage;
     }
 
-    public double getDamage(CEntity e) {
+    public double getDamage(final CEntity e) {
         return getDamageInfo(e, true).damage;
     }
 
-    public void setDamage(CEntity e, double value) {
+    void setDamage(final CEntity e,
+                   final double value) {
         getDamageInfo(e, true).damage = value;
     }
 
@@ -186,31 +188,31 @@ public class MoveOption extends MovePath {
     }
 
     @Override
-    public MoveOption addStep(MoveStepType step_type) {
+    public MoveOption addStep(final MoveStepType step_type) {
         super.addStep(step_type);
-        MoveStep current = getLastStep();
+        final MoveStep current = getLastStep();
         // running with gyro or hip hit is dangerous!
-        PilotingRollData rollTarget = getEntity().checkRunningWithDamage(current.getMovementType(true));
-        if (rollTarget.getValue() != TargetRoll.CHECK_FALSE) {
+        final PilotingRollData rollTarget = getEntity().checkRunningWithDamage(current.getMovementType(true));
+        if (TargetRoll.CHECK_FALSE != rollTarget.getValue()) {
             getStep(0).setDanger(true);
             current.setDanger(true);
         }
 
         //Don't jump onto a building with CF < weight
-        IHex h = getGame().getBoard().getHex(getFinalCoords());
-        if((h != null) && (h.getTerrain(Terrains.BLDG_CF) != null)) {
-            int cf = h.getTerrain(Terrains.BLDG_CF).getTerrainFactor();
+        final IHex h = getGame().getBoard().getHex(getFinalCoords());
+        if ((null != h) && (null != h.getTerrain(Terrains.BLDG_CF))) {
+            final int cf = h.getTerrain(Terrains.BLDG_CF).getTerrainFactor();
             if (cf < getEntity().getWeight()) {
                 current.setMovementType(EntityMovementType.MOVE_ILLEGAL);
             }
         }
         if (current.isDanger()) {
-            if (getCEntity().base_psr_odds < .1) {
+            if (.1 > getCEntity().base_psr_odds) {
                 current.setMovementType(EntityMovementType.MOVE_ILLEGAL);
             } else {
-                double cur_threat = getCEntity().getThreatUtility(
+                final double cur_threat = getCEntity().getThreatUtility(
                         .2 * getEntity().getWeight(), ToHitData.SIDE_REAR)
-                        * (1 - Math.pow(getCEntity().base_psr_odds, 2));
+                                          * (1 - Math.pow(getCEntity().base_psr_odds, 2));
                 movement_threat += cur_threat;
                 if (centity.getTb().debug) {
                     tv.add(cur_threat + " Movement Threat \r\n");
@@ -220,13 +222,13 @@ public class MoveOption extends MovePath {
         return this;
     }
 
-    public int getMovementheatBuildup() {
-        MoveStep last = getLastStep();
-        if (last == null) {
+    int getMovementheatBuildup() {
+        final MoveStep last = getLastStep();
+        if (null == last) {
             return 0;
         }
-        int heat = last.getTotalHeat();
-        int move = 0;
+        final int heat = last.getTotalHeat();
+        final int move;
         switch (last.getMovementType(true)) {
         case MOVE_WALK:
         case MOVE_VTOL_WALK:
@@ -249,11 +251,11 @@ public class MoveOption extends MovePath {
         return heat + move; // illegal?
     }
 
-    public boolean changeToPhysical() {
+    boolean changeToPhysical() {
         if (getEntity() instanceof Infantry) {
             return false;
         }
-        MoveStep last = getLastStep();
+        final MoveStep last = getLastStep();
         if (isJumping()) {
             if (getEntity().canCharge()) {
                 return false;
@@ -266,19 +268,19 @@ public class MoveOption extends MovePath {
                 return false;
             }
         }
-        boolean isClan = getEntity().isClan();
-        if ((last == null)
-                || (last.getMovementType(true) == EntityMovementType.MOVE_ILLEGAL)) {
+        final boolean isClan = getEntity().isClan();
+        if ((null == last)
+            || (EntityMovementType.MOVE_ILLEGAL == last.getMovementType(true))) {
             return false;
         }
-        if ((last.getType() != MoveStepType.FORWARDS)
-                || (isClan
-                    && getGame().getBooleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && (getEntity()
-                        .getSwarmAttackerId() == Entity.NONE))) {
+        if ((MoveStepType.FORWARDS != last.getType())
+            || (isClan
+                && getGame().getBooleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && (Entity.NONE == getEntity()
+                .getSwarmAttackerId()))) {
             return false;
         }
         // TODO: this just takes the first target
-        for (Entity en : getGame().getEntitiesVector(last.getPosition())) {
+        for (final Entity en : getGame().getEntitiesVector(last.getPosition())) {
             if (!en.isSelectableThisTurn() && en.isEnemyOf(getEntity())) {
                 isPhysical = true;
                 removeLastStep();
@@ -294,7 +296,7 @@ public class MoveOption extends MovePath {
     }
 
     // it would be nice to have a stand still move...
-    public void setState() {
+    void setState() {
         setEntity(centity.entity);
         if (getStepVector().isEmpty()) {
             getEntity().setPosition(pos);
@@ -320,19 +322,19 @@ public class MoveOption extends MovePath {
         // set them at the appropriate positions
         final Entity ae = getEntity();
 
-        int attHeight = ae.isProne() ? 0 : 1;
-        int targHeight = te.isProne() ? 0 : 1;
-        int attEl = 0;
-        int targEl = 0;
+        final int attHeight = ae.isProne() ? 0 : 1;
+        final int targHeight = te.isProne() ? 0 : 1;
+        final int attEl;
+        final int targEl;
         attEl = ae.getElevation() + attHeight;
         targEl = te.getElevation() + targHeight;
 
-        boolean pc = false;
-        boolean apc = false;
+        final boolean pc;
+        final boolean apc;
 
         // get all relevent modifiers
-        ToHitData toHita = new ToHitData();
-        ToHitData toHitd = new ToHitData();
+        final ToHitData toHita = new ToHitData();
+        final ToHitData toHitd = new ToHitData();
 
         toHita.append(Compute.getAttackerMovementModifier(getGame(), ae.getId()));
         toHita.append(Compute.getTargetMovementModifier(getGame(), te.getId()));
@@ -346,19 +348,19 @@ public class MoveOption extends MovePath {
         }
         toHitd.append(Compute.getAttackerTerrainModifier(getGame(), te.getId()));
 
-        IHex attHex = getGame().getBoard().getHex(ae.getPosition());
+        final IHex attHex = getGame().getBoard().getHex(ae.getPosition());
         if (attHex.containsTerrain(Terrains.WATER) && (attHex.surface() > attEl)) {
             toHita.addModifier(TargetRoll.IMPOSSIBLE,
                     "Attacker in depth 2+ water");
             toHitd.addModifier(TargetRoll.IMPOSSIBLE,
                     "Defender in depth 2+ water");
-        } else if ((attHex.surface() == attEl) && (ae.height() > 0)) {
-            apc = true;
+        } else //noinspection StatementWithEmptyBody
+            if ((attHex.surface() == attEl) && (0 < ae.height())) {
         }
-        IHex targHex = getGame().getBoard().getHex(te.getPosition());
+        final IHex targHex = getGame().getBoard().getHex(te.getPosition());
         if (targHex.containsTerrain(Terrains.WATER)) {
-            if ((targHex.surface() == targEl) && (te.height() > 0)) {
-                pc = true;
+            //noinspection StatementWithEmptyBody
+            if ((targHex.surface() == targEl) && (0 < te.height())) {
             } else if (targHex.surface() > targEl) {
                 toHita.addModifier(TargetRoll.IMPOSSIBLE,
                         "Attacker in depth 2+ water");
@@ -368,22 +370,22 @@ public class MoveOption extends MovePath {
         }
 
         // calc & add attacker los mods
-        LosEffects los = LosEffects.calculateLos(getGame(), ae.getId(), te);
+        final LosEffects los = LosEffects.calculateLos(getGame(), ae.getId(), te);
         toHita.append(los.losModifiers(getGame()));
         // save variables
         pc = los.isTargetCover();
         apc = los.isAttackerCover();
         // reverse attacker & target partial cover & calc defender los mods
-        int temp = los.getTargetCover();
+        final int temp = los.getTargetCover();
         los.setTargetCover(los.getAttackerCover());
         los.setAttackerCover(temp);
         toHitd.append(los.losModifiers(getGame()));
 
         // heatBuildup
-        if (ae.getHeatFiringModifier() != 0) {
+        if (0 != ae.getHeatFiringModifier()) {
             toHita.addModifier(ae.getHeatFiringModifier(), "heatBuildup");
         }
-        if (te.getHeatFiringModifier() != 0) {
+        if (0 != te.getHeatFiringModifier()) {
             toHitd.addModifier(te.getHeatFiringModifier(), "heatBuildup");
         }
         // target immobile
@@ -397,21 +399,21 @@ public class MoveOption extends MovePath {
         // target prone
         if (te.isProne()) {
             // easier when point-blank
-            if (range == 1) {
+            if (1 == range) {
                 toHita.addModifier(-2, "target prone and adjacent");
             }
             // harder at range
-            if (range > 1) {
+            if (1 < range) {
                 toHita.addModifier(1, "target prone and at range");
             }
         }
         if (ae.isProne()) {
             // easier when point-blank
-            if (range == 1) {
+            if (1 == range) {
                 toHitd.addModifier(-2, "target prone and adjacent");
             }
             // harder at range
-            if (range > 1) {
+            if (1 < range) {
                 toHitd.addModifier(1, "target prone and at range");
             }
         }
@@ -429,32 +431,32 @@ public class MoveOption extends MovePath {
         // self threat and self damage are considered transient
         double temp_threat = (threat + movement_threat + self_threat + ((double) getMovementheatBuildup() / 20))
                 / getCEntity().strategy.attack;
-        double temp_damage = (damage + self_damage) * centity.strategy.attack;
+        final double temp_damage = (damage + self_damage) * centity.strategy.attack;
         if ((threat + movement_threat) > (4 * centity.avg_armor)) {
-            double ratio = (threat + movement_threat)
-                    / (centity.avg_armor + (.25 * centity.avg_iarmor));
-            if (ratio > 2) {
+            final double ratio = (threat + movement_threat)
+                                 / (centity.avg_armor + (.25 * centity.avg_iarmor));
+            if (2 < ratio) {
                 temp_threat += centity.bv / 15.0; // likely to die
                 doomed = true;
                 inDanger = true;
-            } else if (ratio > 1) {
+            } else if (1 < ratio) {
                 temp_threat += centity.bv / 30.0; // in danger
                 inDanger = true;
             } else {
                 temp_threat += centity.bv / 75.0; // in danger
                 inDanger = true;
             }
-        } else if ((threat + movement_threat) > 30) {
+        } else if (30 < (threat + movement_threat)) {
             temp_threat += centity.entity.getWeight();
         }
         double retVal = temp_threat - temp_damage;
 
-        List<TargetRoll> psrList = SharedUtility.getPSRList(this);
-        boolean aptPiloting = getEntity().getCrew().getOptions().booleanOption(OptionsConstants
+        final List<TargetRoll> psrList = SharedUtility.getPSRList(this);
+        final boolean aptPiloting = getEntity().getCrew().getOptions().booleanOption(OptionsConstants
                                                                                        .PILOT_APTITUDE_PILOTING);
-        for (TargetRoll roll : psrList) {
-            double multiple = Compute.oddsAbove(roll.getValue(), aptPiloting) / 100;
-            retVal *= (multiple > 0) ? multiple : 0.01;
+        for (final TargetRoll roll : psrList) {
+            final double multiple = Compute.oddsAbove(roll.getValue(), aptPiloting) / 100;
+            retVal *= (0 < multiple) ? multiple : 0.01;
         }
         utility = retVal;
         utilityCalculated = true;
@@ -466,24 +468,26 @@ public class MoveOption extends MovePath {
      * twisting and slightly for heat -- the ce passed in is supposed to be the
      * enemy mech
      */
-    public double getMaxModifiedDamage(MoveOption enemy, int modifier, int apc) {
-        double max = 0;
-        int distance = getFinalCoords().distance(enemy.getFinalCoords());
+    double getMaxModifiedDamage(final MoveOption enemy,
+                                final int modifier,
+                                final int apc) {
+        double max;
+        final int distance = getFinalCoords().distance(enemy.getFinalCoords());
         double mod = 1;
         // heat effect modifiers
         if (enemy.isJumping()
-            || ((enemy.getEntity().heat + enemy.getEntity().heatBuildup) > 4)) {
-            if (enemy.centity.overheat == CEntity.OVERHEAT_LOW) {
+            || (4 < (enemy.getEntity().heat + enemy.getEntity().heatBuildup))) {
+            if (CEntity.OVERHEAT_LOW == enemy.centity.overheat) {
                 mod = .75;
-            } else if (enemy.centity.overheat == CEntity.OVERHEAT_HIGH) {
+            } else if (CEntity.OVERHEAT_HIGH == enemy.centity.overheat) {
                 mod = .5;
             } else {
                 mod = .9;
             }
         }
-        boolean aptGunnery = enemy.getEntity().getCrew().getOptions()
-                                  .booleanOption(OptionsConstants.PILOT_APTITUDE_PILOTING);
-        int enemy_firing_arcs[] = { 0, 0, 0};
+        final boolean aptGunnery = enemy.getEntity().getCrew().getOptions()
+                                        .booleanOption(OptionsConstants.PILOT_APTITUDE_PILOTING);
+        final int[] enemy_firing_arcs = { 0, 0, 0 };
         enemy_firing_arcs[0] =CEntity.getThreatHitArc(enemy
                 .getFinalCoords(), MovePath.getAdjustedFacing(enemy
                         .getFinalFacing(), MoveStepType.NONE), getFinalCoords());
@@ -493,17 +497,17 @@ public class MoveOption extends MovePath {
         enemy_firing_arcs[0] =CEntity.getThreatHitArc(enemy
                 .getFinalCoords(), MovePath.getAdjustedFacing(enemy
                         .getFinalFacing(), MoveStepType.TURN_RIGHT), getFinalCoords());
-        max = enemy.centity.getModifiedDamage((apc == 1) ? CEntity.TT
+        max = enemy.centity.getModifiedDamage((1 == apc) ? CEntity.TT
                                                          : enemy_firing_arcs[0], distance, modifier, aptGunnery);
 
-        if (enemy_firing_arcs[1] == ToHitData.SIDE_FRONT) {
+        if (ToHitData.SIDE_FRONT == enemy_firing_arcs[1]) {
             max = Math.max(max, enemy.centity.getModifiedDamage(CEntity.TT,
                                                                 distance, modifier, aptGunnery));
         } else {
             max = Math.max(max, enemy.centity.getModifiedDamage(
                     enemy_firing_arcs[1], distance, modifier, aptGunnery));
         }
-        if (enemy_firing_arcs[2] == ToHitData.SIDE_FRONT) {
+        if (ToHitData.SIDE_FRONT == enemy_firing_arcs[2]) {
             max = Math.max(max, enemy.centity.getModifiedDamage(CEntity.TT,
                                                                 distance, modifier, aptGunnery));
         } else {
@@ -513,15 +517,15 @@ public class MoveOption extends MovePath {
         // TODO this is not quite right, but good enough for now...
         // ideally the pa charaterization should be in centity
         max *= mod;
-        if (!enemy.getFinalProne() && (distance == 1)
-                && (enemy_firing_arcs[0] != ToHitData.SIDE_REAR)) {
-            IHex h = getGame().getBoard().getHex(getFinalCoords());
-            IHex h1 = getGame().getBoard().getHex(enemy.getFinalCoords());
-            if (Math.abs(h.getLevel() - h1.getLevel()) < 2) {
-                max += ((((((h1.getLevel() - h.getLevel()) == 1) || getFinalProne()) ? 5
-                        : 1)
-                        * ((enemy_firing_arcs[0] == ToHitData.SIDE_FRONT) ? .2
-                                : .05)
+        if (!enemy.getFinalProne() && (1 == distance)
+            && (ToHitData.SIDE_REAR != enemy_firing_arcs[0])) {
+            final IHex h = getGame().getBoard().getHex(getFinalCoords());
+            final IHex h1 = getGame().getBoard().getHex(enemy.getFinalCoords());
+            if (2 > Math.abs(h.getLevel() - h1.getLevel())) {
+                max += (((((1 == (h1.getLevel() - h.getLevel())) || getFinalProne()) ? 5
+                                                                                     : 1)
+                         * ((ToHitData.SIDE_FRONT == enemy_firing_arcs[0]) ? .2
+                                                                           : .05)
                         * centity.entity.getWeight()
                         * Compute.oddsAbove(3 + modifier,
                                             getEntity().getCrew().getOptions()
@@ -534,16 +538,17 @@ public class MoveOption extends MovePath {
         return max;
     }
 
-    public DamageInfo getDamageInfo(CEntity cen, boolean create) {
+    DamageInfo getDamageInfo(final CEntity cen,
+                             final boolean create) {
         DamageInfo result = damageInfos.get(cen);
-        if (create && (result == null)) {
+        if (create && (null == result)) {
             result = new DamageInfo();
             damageInfos.put(cen, result);
         }
         return result;
     }
 
-    public double getDistUtility() {
+    double getDistUtility() {
         return getMpUsed() + ((movement_threat * 100) / centity.bv);
     }
 
@@ -551,12 +556,12 @@ public class MoveOption extends MovePath {
      * There could still be a problem here, but now it's the callers problem
      */
     int getPhysicalTargetId() {
-        MoveStep step = getLastStep();
-        if (step == null) {
+        final MoveStep step = getLastStep();
+        if (null == step) {
             return -1;
         }
-        Targetable target = step.getTarget(getGame());
-        if (target == null) {
+        final Targetable target = step.getTarget(getGame());
+        if (null == target) {
             return -1;
         }
         return target.getTargetId();
