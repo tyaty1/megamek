@@ -4302,6 +4302,25 @@ public class Server implements Runnable {
             }
         }
     }
+    
+    /**
+     * Processes a {@link RuleHandler RuleHandler}, as well as any child RuleHandlers generated,
+     * and adds any generated reports to the phase report list.
+     * 
+     * @param incident The incident to process.
+     * @return         <code>true</code> if processing should continue, <code>false</code> if the remainder
+     *                 of the {@link RuleHandler RuleHandlers} generated at the same level should be aborted.
+     */
+    public boolean processRuleHandler(RuleHandler ruleHandler) {
+        boolean keepGoing = ruleHandler.resolve(getGame());
+        addReport(ruleHandler.getReports());
+        for (RuleHandler child : ruleHandler.getChildren()) {
+            if (!processRuleHandler(child)) {
+                break;
+            }
+        }
+        return keepGoing;
+    }
 
     private void applyDropshipLandingDamage(Coords centralPos, Entity killer) {
 
@@ -35578,7 +35597,7 @@ public class Server implements Runnable {
      * Add a whole lotta Reports to the players report queues as well as the
      * Master report queue vPhaseReport.
      */
-    private void addReport(Vector<Report> reports) {
+    private void addReport(List<Report> reports) {
         vPhaseReport.addAll(reports);
     }
 
