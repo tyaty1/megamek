@@ -13,7 +13,7 @@
  *  for more details.
  */
 
-package megamek.server;
+package megamek.server.rulehandler;
 
 import megamek.common.Entity;
 
