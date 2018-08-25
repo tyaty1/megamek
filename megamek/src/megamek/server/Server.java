@@ -4314,6 +4314,7 @@ public class Server implements Runnable {
     public boolean processRuleHandler(RuleHandler ruleHandler) {
         boolean keepGoing = ruleHandler.resolve(getGame());
         addReport(ruleHandler.getReports());
+        ruleHandler.getPackets().forEach(p -> send(p));
         for (RuleHandler child : ruleHandler.getChildren()) {
             if (!processRuleHandler(child)) {
                 break;
