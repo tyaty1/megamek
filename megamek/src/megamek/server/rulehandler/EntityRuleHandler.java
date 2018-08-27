@@ -15,7 +15,12 @@
 
 package megamek.server.rulehandler;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import megamek.common.Entity;
+import megamek.common.IEntityRemovalConditions;
+import megamek.common.net.Packet;
 
 /**
  * Base class for {@link RuleHandler RuleHandler}s involving a particular {@link Entity Entity}.
@@ -23,12 +28,55 @@ import megamek.common.Entity;
  * @author Neoancient
  *
  */
-public abstract class EntityRuleHandler {
+public abstract class EntityRuleHandler extends RuleHandler {
     
     protected final Entity entity;
     
     protected EntityRuleHandler(Entity entity) {
         this.entity = entity;
+    }
+    
+    /**
+     * Creates a packet detailing the removal of an entity.
+     *
+     * @param entityId  - the <code>int</code> ID of the entity being removed.
+     * @param condition - the <code>int</code> condition the unit was in.
+     * @return A <code>Packet</code> to be sent to clients.
+     * @throws IllegalArgumentException if condition is not a value of a constant
+     *         in {@link IEntityRemovalConditions IEntityRemovalConditions}
+     */
+    protected Packet createRemoveEntityPacket(int entityId, int condition) {
+        ArrayList<Integer> ids = new ArrayList<Integer>(1);
+        ids.add(entityId);
+        return createRemoveEntityPacket(ids, condition);
+    }
+
+    /**
+     * Creates a packet detailing the removal of a list of entities.
+     *
+     * @param entityIds - the <code>int</code> ID of each entity being removed.
+     * @param condition - the <code>int</code> condition the units were in.
+     * @return A {@link Packet Packet} to be sent to clients.
+     * @throws IllegalArgumentException if condition is not a value of a constant
+     *         in {@link IEntityRemovalConditions IEntityRemovalConditions}
+     */
+    protected Packet createRemoveEntityPacket(List<Integer> entityIds,
+                                            int condition) {
+        if ((condition != IEntityRemovalConditions.REMOVE_UNKNOWN)
+            && (condition != IEntityRemovalConditions.REMOVE_IN_RETREAT)
+            && (condition != IEntityRemovalConditions.REMOVE_PUSHED)
+            && (condition != IEntityRemovalConditions.REMOVE_SALVAGEABLE)
+            && (condition != IEntityRemovalConditions.REMOVE_EJECTED)
+            && (condition != IEntityRemovalConditions.REMOVE_CAPTURED)
+            && (condition != IEntityRemovalConditions.REMOVE_DEVASTATED)
+            && (condition != IEntityRemovalConditions.REMOVE_NEVER_JOINED)) {
+            throw new IllegalArgumentException("Unknown unit condition: "
+                                               + condition);
+        }
+        Object[] array = new Object[2];
+        array[0] = entityIds;
+        array[1] = new Integer(condition);
+        return new Packet(Packet.COMMAND_ENTITY_REMOVE, array);
     }
 
 }

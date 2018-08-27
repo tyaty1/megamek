@@ -281,6 +281,8 @@ import megamek.server.commands.TeamCommand;
 import megamek.server.commands.TraitorCommand;
 import megamek.server.commands.VictoryCommand;
 import megamek.server.commands.WhoCommand;
+import megamek.server.rulehandler.EntityRuleHandler;
+import megamek.server.rulehandler.RuleHandler;
 import megamek.server.victory.VictoryResult;
 
 /**
@@ -4304,23 +4306,15 @@ public class Server implements Runnable {
     }
     
     /**
-     * Processes a {@link RuleHandler RuleHandler}, as well as any child RuleHandlers generated,
-     * and adds any generated reports to the phase report list.
+     * Processes a {@link RuleHandler RuleHandler}, adds any generated reports to the phase report list,
+     * and sends any generated packets.
      * 
-     * @param incident The incident to process.
-     * @return         <code>true</code> if processing should continue, <code>false</code> if the remainder
-     *                 of the {@link RuleHandler RuleHandlers} generated at the same level should be aborted.
+     * @param incident The RuleHandler to process.
      */
-    public boolean processRuleHandler(RuleHandler ruleHandler) {
-        boolean keepGoing = ruleHandler.resolve(getGame());
+    public void processRuleHandler(RuleHandler ruleHandler) {
+        ruleHandler.resolve(getGame());
         addReport(ruleHandler.getReports());
         ruleHandler.getPackets().forEach(p -> send(p));
-        for (RuleHandler child : ruleHandler.getChildren()) {
-            if (!processRuleHandler(child)) {
-                break;
-            }
-        }
-        return keepGoing;
     }
 
     private void applyDropshipLandingDamage(Coords centralPos, Entity killer) {
@@ -36770,5 +36764,83 @@ public class Server implements Runnable {
 
     public void setHexUpdateSet(HashSet<Coords> hexUpdateSet) {
         this.hexUpdateSet = hexUpdateSet;
+    }
+    
+    /*************************************************************************************************
+     * The following are transitional classes that serve as adapters that allow private server methods
+     * to be used with the RuleHandler framework
+     *************************************************************************************************/
+    
+    public class BuildingCollapseDuringMovement extends EntityRuleHandler {
+        final private Building building;
+        final private Coords curPos;
+        final private boolean trackAffected;
+        
+        private boolean collapsed = false;
+        
+        /**
+         * @param entity         The Entity affecting the building
+         * @param building       The building affected
+         * @param curPos         The coordinates of the hex containing the building or section
+         * @param trackAffected  Whether to track any affect the Entity had on the building
+         */
+        public BuildingCollapseDuringMovement(Entity entity, Building building, Coords curPos,
+                boolean trackAffected) {
+            super(entity);
+            this.building = building;
+            this.curPos = curPos;
+            this.trackAffected = trackAffected;
+        }
+
+        @Override
+        public void resolve(IGame game) {
+            collapsed = checkBuildingCollapseWhileMoving(building, entity, curPos);
+            if (trackAffected) {
+                addAffectedBldg(building, collapsed);
+            }
+        }
+        
+        public boolean isCollapsed() {
+            return collapsed;
+        }
+    }
+    
+    public class PilotFallDamage extends EntityRuleHandler {
+        final private int fallHeight;
+        final private PilotingRollData roll;
+        
+        public PilotFallDamage(Entity entity, int fallHeight, PilotingRollData roll) {
+            super(entity);
+            this.fallHeight = fallHeight;
+            this.roll = roll;
+        }
+        
+        @Override
+        public void resolve(IGame game) {
+            addReport(checkPilotAvoidFallDamage(entity, fallHeight, roll));
+        }
+    }
+    
+    public class CriticalHitHandler extends EntityRuleHandler {
+        final private int location;
+        final private CriticalSlot slot;
+        final private boolean secondaryEffects;
+        final private int damageCaused;
+        final private boolean capital;
+        
+        public CriticalHitHandler(Entity entity, int location, CriticalSlot slot,
+                boolean secondaryEffects, int damageCaused, boolean capital) {
+            super(entity);
+            this.location = location;
+            this.slot = slot;
+            this.secondaryEffects = secondaryEffects;
+            this.damageCaused = damageCaused;
+            this.capital = capital;
+        }
+        
+        @Override
+        public void resolve(IGame game) {
+            addReport(applyCriticalHit(entity, location, slot, secondaryEffects, damageCaused, capital));
+        }
     }
 }

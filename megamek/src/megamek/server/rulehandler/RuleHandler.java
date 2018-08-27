@@ -19,14 +19,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import megamek.common.Coords;
 import megamek.common.IGame;
+import megamek.common.IHex;
 import megamek.common.Report;
 import megamek.common.net.Packet;
 
 /**
  * Base class for a circumstance that requires resolution by applying one a rule of the game. Creating an
  * instance configures it with necessary details, then it is resolved in a separate {@link #resolve(IGame)
- * resolve} action. The resolution may generate reports, packets, and possibly additional child RuleHandlers.
+ * resolve} action. The resolution may generate reports and packets.
  * 
  * @author Neancient
  *
@@ -34,7 +36,6 @@ import megamek.common.net.Packet;
 public abstract class RuleHandler {
     
     private final List<Report> reports = new ArrayList<>();
-    private final List<RuleHandler> children = new ArrayList<>();
     private final List<Packet> packets = new ArrayList<>();
     
     /**
@@ -75,30 +76,21 @@ public abstract class RuleHandler {
     }
     
     /**
-     * Adds a child RuleHandler that is created during the resolution of this one.
-     * 
-     * @param child The child RuleHandler
-     */
-    protected void addChild(RuleHandler child) {
-        children.add(child);
-    }
-    
-    /**
-     * Gets the list of additional RuleHandlers, if any, created during the resolution of this one.
-     * 
-     * @return An unmodifiable list of child RuleHandlers
-     */
-    public List<RuleHandler> getChildren() {
-        return Collections.unmodifiableList(children);
-    }
-    
-    /**
      * Adds a {@link Packet Packet} that should be sent by the server when processed
      * 
      * @param packet A Packet for the server to send to connected clients
      */
     protected void addPacket(Packet packet) {
         packets.add(packet);
+    }
+    
+    /**
+     * Adds {@link Packet Packet}s that should be sent by the server when processed
+     * 
+     * @param packet A {@link List List} of Packets for the server to send to connected clients
+     */
+    protected void addPackets(List<Packet> packets) {
+        packets.addAll(packets);
     }
     
     /**
@@ -114,10 +106,54 @@ public abstract class RuleHandler {
      * Applies the game rules to resolve the circumstance
      * 
      * @param game The server's {@link IGame game} instance
-     * @return     <code>true</code> if the processing of RuleHandlers should continue. <code>false</code>
-     *             indicates that the remaining RuleHandlers in the list currently being processed should
-     *             be discarded without resolving them.
      */
-    public abstract boolean resolve(IGame game);
+    public abstract void resolve(IGame game);
+    
+    /**
+     * Processes a RuleHandler that was generated in the process of resolving this one, and collects
+     * all generated reports and packets.
+     * 
+     * @param child  A RuleHandler that is generated in the course of resolving this one.
+     * @param game   The {@link Server server's} {@link IGame game} instance.
+     */
+    protected void process(RuleHandler child, IGame game) {
+        resolve(game);
+        addReport(child.getReports());
+        addPackets(child.getPackets());
+    }
+
+    /**
+     * Creates a packet containing the current turn vector
+     *
+     * @param game The server's {@link IGame game} instance
+     * @return     A turn vector packet
+     */
+    protected Packet createTurnVectorPacket(IGame game) {
+        return new Packet(Packet.COMMAND_SENDING_TURNS, game.getTurnVector());
+    }
+    
+    /**
+     * Creates a packet containing the current turn index
+     * 
+     * @param game     The server's {@link IGame game} instance
+     * @param playerId The ID of the current player
+     * @return         A turn index packet
+     */
+    protected Packet createTurnIndexPacket(IGame game, int playerId) {
+        final Object[] data = new Object[3];
+        data[0] = new Integer(game.getTurnIndex());
+        data[1] = playerId;
+        return new Packet(Packet.COMMAND_TURN, data);
+    }
+
+    /**
+     * Creates a packet containing a hex, and the coordinates it goes at.
+     */
+    protected Packet createHexChangePacket(Coords coords, IHex hex) {
+        final Object[] data = new Object[2];
+        data[0] = coords;
+        data[1] = hex;
+        return new Packet(Packet.COMMAND_CHANGE_HEX, data);
+    }
 
 }
