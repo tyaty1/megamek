@@ -45,8 +45,8 @@ import megamek.common.Tank;
 import megamek.common.TargetRoll;
 import megamek.common.Terrains;
 import megamek.common.ToHitData;
-import megamek.common.VTOL;
 import megamek.common.actions.ChargeAttackAction;
+import megamek.common.logging.DefaultMmLogger;
 import megamek.common.options.OptionsConstants;
 import megamek.server.Server;
 
@@ -61,17 +61,21 @@ import megamek.server.Server;
 public class EntitySkid extends EntityRuleHandler {
     
     final private Coords start;
-    final private int elevation;
+    final private int startElevation;
     final private int direction;
-    final private int distance;
+    final private int origDistance;
     final private MoveStep step;
     final private EntityMovementType moveType;
     final private boolean flip;
     
+    // Needed for access to the transitional RuleHandler adapters. Once they have been extracted by
+    // refactoring the wrapped code, this can be removed.
+    final private Server server;
+    
     /**
      * Indicates whether the {@link Entity Entity} is removed from the game as a result of resolving the skid
      */
-    private boolean removeFromGame = false;
+    private boolean removeFromPlay = false;
 
     /**
      * @param entity    the unit which should skid
@@ -80,13 +84,14 @@ public class EntitySkid extends EntityRuleHandler {
      * @param direction the direction of the skid
      * @param distance  the number of hexes skidded
      * @param step      the MoveStep which caused the skid
+     * @param server    The server instance; needed temporarilty to access transitional code
      * @return true if the entity was removed from play
      */
     public EntitySkid(Entity entity, Coords start, int elevation,
             int direction, int distance, MoveStep step,
-            EntityMovementType moveType) {
+            EntityMovementType moveType, Server server) {
         this(entity, start, elevation, direction, distance,
-                step, moveType, false);
+                step, moveType, false, server);
     }
     
     /**
@@ -97,33 +102,37 @@ public class EntitySkid extends EntityRuleHandler {
      * @param distance  the number of hexes skidded
      * @param step      the MoveStep which caused the skid
      * @param flip      whether the skid resulted from a failure maneuver result of major skid
+     * @param server    The server instance; needed temporarilty to access transitional code
      * @return true if the entity was removed from play
      */
     public EntitySkid(Entity entity, Coords start, int elevation,
             int direction, int distance, MoveStep step,
-            EntityMovementType moveType, boolean flip) {
+            EntityMovementType moveType, boolean flip, Server server) {
         super(entity);
         this.start = start;
-        this.elevation = elevation;
+        this.startElevation = elevation;
         this.direction = direction;
-        this.distance = distance;
+        this.origDistance = distance;
         this.step = step;
         this.moveType = moveType;
         this.flip = flip;
+        this.server = server;
     }
     
     /**
      * After the skid is resolved, this indicates whether the skid results in the {@link Entity Entity} 
      * being removed from the game, either by destruction or by leaving the board.
      */
-    public boolean isRemovedFromGame() {
-        return removeFromGame;
+    public boolean isRemovedFromPlay() {
+        return removeFromPlay;
     }
 
     private Coords nextPos;
     private Coords curPos;
     private IHex curHex;
-    int skidDistance;
+    private int distRemaining;
+    private int currentElevation;
+    private int skidDistance;
     
     @Override
     public void resolve(IGame game) {
@@ -131,11 +140,13 @@ public class EntitySkid extends EntityRuleHandler {
         nextPos = start;
         curPos = nextPos;
         curHex = game.getBoard().getHex(start);
+        distRemaining = origDistance;
+        currentElevation = startElevation;
         Report r;
         skidDistance = 0; // actual distance moved
         // Flipping vehicles take tonnage/10 points of damage for every hex they enter.
         int flipDamage = (int)Math.ceil(entity.getWeight() / 10.0);
-        while (!entity.isDoomed() && (distance > 0)) {
+        while (!entity.isDoomed() && (distRemaining > 0)) {
             nextPos = curPos.translated(direction);
             // Is the next hex off the board?
             if (!game.getBoard().contains(nextPos)) {
@@ -171,7 +182,7 @@ public class EntitySkid extends EntityRuleHandler {
                                                       IEntityRemovalConditions.REMOVE_PUSHED));
                     }
                     // The entity's movement is completed.
-                    removeFromGame = true;
+                    removeFromPlay = true;
                     return;
 
                 }
@@ -185,17 +196,17 @@ public class EntitySkid extends EntityRuleHandler {
             }
 
             IHex nextHex = game.getBoard().getHex(nextPos);
-            distance -= nextHex.movementCost(entity) + 1;
+            distRemaining -= nextHex.movementCost(entity) + 1;
             // By default, the unit is going to fall to the floor of the next
             // hex
-            int curAltitude = elevation + curHex.getLevel();
+            int curAltitude = currentElevation + curHex.getLevel();
             int nextAltitude = nextHex.floor();
 
             // but VTOL keep altitude
             if (entity.getMovementMode() == EntityMovementMode.VTOL) {
                 nextAltitude = Math.max(nextAltitude, curAltitude);
             } else if (entity.getMovementMode() == EntityMovementMode.WIGE
-                    && elevation > 0 && nextAltitude < curAltitude) {
+                    && currentElevation > 0 && nextAltitude < curAltitude) {
                 // Airborne WiGEs drop to one level above the surface
                 nextAltitude++;
             } else {
@@ -275,7 +286,7 @@ public class EntitySkid extends EntityRuleHandler {
             }
 
             // however WIGE can gain 1 level to avoid crashing into the terrain.
-            if (entity.getMovementMode() == EntityMovementMode.WIGE && (elevation > 0)) {
+            if (entity.getMovementMode() == EntityMovementMode.WIGE && (currentElevation > 0)) {
                 if (curAltitude == nextHex.floor()) {
                     nextElevation = 1;
                     crashedIntoTerrain = false;
@@ -347,19 +358,19 @@ public class EntitySkid extends EntityRuleHandler {
                             table = ToHitData.SIDE_RIGHT;
                             break;
                     }
-                    elevation = nextElevation;
+                    currentElevation = nextElevation;
                     if (entity instanceof Tank) {
-                        addReport(crashVTOLorWiGE((Tank) entity, false, true,
-                                distance, curPos, elevation, table));
+                        process(server.new AirborneVehicleCrash((Tank) entity, false, true,
+                                distRemaining, curPos, currentElevation, table), game);
                     }
 
                     if ((nextHex.containsTerrain(Terrains.WATER) && !nextHex
                             .containsTerrain(Terrains.ICE))
                             || nextHex.containsTerrain(Terrains.WOODS)
                             || nextHex.containsTerrain(Terrains.JUNGLE)) {
-                        addReport(destroyEntity(entity,
-                                "could not land in crash site"));
-                    } else if (elevation < nextHex
+                        process(server.new EntityDestruction(entity,
+                                "could not land in crash site"), game);
+                    } else if (currentElevation < nextHex
                             .terrainLevel(Terrains.BLDG_ELEV)) {
                         Building bldg = game.getBoard().getBuildingAt(nextPos);
 
@@ -367,22 +378,22 @@ public class EntitySkid extends EntityRuleHandler {
                         // before the wall not in the wall
                         // Like a building.
                         if (bldg.getType() == Building.WALL) {
-                            addReport(destroyEntity(entity,
-                                    "crashed into a wall"));
+                            process(server.new EntityDestruction(entity,
+                                    "crashed into a wall"), game);
                             break;
                         }
                         if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
-                            addReport(destroyEntity(entity,
-                                    "crashed into a gun emplacement"));
+                            process(server.new EntityDestruction(entity,
+                                    "crashed into a gun emplacement"), game);
                             break;
                         }
 
-                        addReport(destroyEntity(entity, "crashed into building"));
+                        process(server.new EntityDestruction(entity, "crashed into building"), game);
                     } else {
                         entity.setPosition(nextPos);
                         entity.setElevation(0);
-                        addReport(doEntityDisplacementMinefieldCheck(entity,
-                                curPos, nextPos, nextElevation));
+                        process(server.new EntityDisplacementMinefieldCheck(entity,
+                                curPos, nextPos, nextElevation), game);
                     }
                     curPos = nextPos;
                     break;
@@ -397,9 +408,9 @@ public class EntitySkid extends EntityRuleHandler {
                     if (entity instanceof Protomech) {
                         table = ToHitData.HIT_SPECIAL_PROTO;
                     }
-                    addReport(damageEntity(entity,
+                    process(server.new EntityDamage(entity,
                                            entity.rollHitLocation(table, side),
-                                           Math.min(5, damage)));
+                                           Math.min(5, damage)), game);
                     damage -= 5;
                 }
                 // Stay in the current hex and stop skidding.
@@ -424,7 +435,7 @@ public class EntitySkid extends EntityRuleHandler {
                         crashDropship.getTargetId(),
                         crashDropship.getPosition());
                 ToHitData toHit = caa.toHit(game, true);
-                resolveChargeDamage(entity, crashDropship, toHit, direction);
+                process(server.new ChargeDamage(entity, crashDropship, toHit, direction), game);
                 if ((entity.getMovementMode() == EntityMovementMode.WIGE)
                     || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
                     int hitSide = (step.getFacing() - direction) + 6;
@@ -447,9 +458,9 @@ public class EntitySkid extends EntityRuleHandler {
                             table = ToHitData.SIDE_RIGHT;
                             break;
                     }
-                    elevation = nextElevation;
-                    addReport(crashVTOLorWiGE((VTOL) entity, false, true,
-                            distance, curPos, elevation, table));
+                    currentElevation = nextElevation;
+                    process(server.new AirborneVehicleCrash((Tank) entity, false, true,
+                            distRemaining, curPos, currentElevation, table), game);
                     break;
                 }
                 if (!crashDropship.isDoomed() && !crashDropship.isDestroyed()
@@ -462,12 +473,11 @@ public class EntitySkid extends EntityRuleHandler {
             else if (curAltitude > (nextAltitude + entity
                     .getMaxElevationChange())
                     && !(entity.getMovementMode() == EntityMovementMode.WIGE
-                            && elevation > curHex.ceiling())) {
-                addReport(doEntityFallsInto(entity, entity.getElevation(),
-                        curPos, nextPos,
-                        entity.getBasePilotingRoll(moveType), true));
-                addReport(doEntityDisplacementMinefieldCheck(entity,
-                        curPos, nextPos, nextElevation));
+                            && currentElevation > curHex.ceiling())) {
+                process(server.new EntityFallIntoHex(entity, entity.getElevation(),
+                        curPos, nextPos, entity.getBasePilotingRoll(moveType), true), game);
+                process(server.new EntityDisplacementMinefieldCheck(entity,
+                        curPos, nextPos, nextElevation), game);
                 // Stay in the current hex and stop skidding.
                 break;
             }
@@ -587,8 +597,8 @@ public class EntitySkid extends EntityRuleHandler {
                             addReport(r);
                         } else {
                             // Resolve the charge.
-                            resolveChargeDamage(entity, target, toHit,
-                                                direction);
+                            process(server.new ChargeDamage(entity, target, toHit,
+                                                direction), game);
                             // HACK: set the entity's location
                             // to the original hex again, for the other targets
                             if (targets.hasNext()) {
@@ -609,7 +619,7 @@ public class EntitySkid extends EntityRuleHandler {
                         // as if it still had his leg after
                         // getting skid-charged.
                         if (!target.isDone()) {
-                            addReport(resolvePilotingRolls(target));
+                            process(server.new PilotingSkillRoll(target), game);
                             game.resetPSRs(target);
                             target.applyDamage();
                             addNewLines();
@@ -639,8 +649,8 @@ public class EntitySkid extends EntityRuleHandler {
                         hit.setGeneralDamageType(HitData.DAMAGE_PHYSICAL);
                         // Damage equals tonnage, divided by 5.
                         // ASSUMPTION: damage is applied in one hit.
-                        addReport(damageEntity(target, hit,
-                                               (int) Math.round(entity.getWeight() / 5)));
+                        process(server.new EntityDamage(target, hit,
+                                               (int) Math.round(entity.getWeight() / 5)), game);
                         addNewLines();
                     }
 
@@ -652,20 +662,20 @@ public class EntitySkid extends EntityRuleHandler {
 
                             // Dead entities don't take turns.
                             game.removeTurnFor(target);
-                            send(createTurnVectorPacket());
+                            addPacket(createTurnVectorPacket(game));
 
                         } // End target-still-to-move
 
                         // Clean out the entity.
                         target.setDestroyed(true);
                         game.moveToGraveyard(target.getId());
-                        send(createRemoveEntityPacket(target.getId()));
+                        addPacket(createRemoveEntityPacket(target.getId()));
                     }
 
                     // Update the target's position,
                     // unless it is off the game map.
                     if (!game.isOutOfGame(target)) {
-                        entityUpdate(target.getId());
+                        process(server.new EntityUpdate(target.getId()), game);
                     }
 
                 } // Check the next entity in the hex.
@@ -682,7 +692,7 @@ public class EntitySkid extends EntityRuleHandler {
                     // Prevents adding extra turns for multi-turns
                     newTurn.setMultiTurn(true);
                     game.insertNextTurn(newTurn);
-                    send(createTurnVectorPacket());
+                    addPacket(createTurnVectorPacket(game));
                 }
             }
 
@@ -706,12 +716,11 @@ public class EntitySkid extends EntityRuleHandler {
                         .getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_CHARGE_DAMAGE),
                         entity.delta_distance);
                 if (!bldgSuffered) {
-                    Vector<Report> reports = damageBuilding(bldg, chargeDamage,
-                                                            nextPos);
-                    for (Report report : reports) {
+                    RuleHandler handler = server.new BuildingDamage(bldg, chargeDamage, nextPos);
+                    process(handler, game);
+                    for (Report report : handler.getReports()) {
                         report.subject = entity.getId();
                     }
-                    addReport(reports);
 
                     // Apply damage to the attacker.
                     int toAttacker = ChargeAttackAction.getDamageTakenBy(
@@ -719,13 +728,13 @@ public class EntitySkid extends EntityRuleHandler {
                     HitData hit = entity.rollHitLocation(ToHitData.HIT_NORMAL,
                                                          entity.sideTable(nextPos));
                     hit.setGeneralDamageType(HitData.DAMAGE_PHYSICAL);
-                    addReport(damageEntity(entity, hit, toAttacker));
+                    process(server.new EntityDamage(entity, hit, toAttacker), game);
                     addNewLines();
 
                     entity.setPosition(nextPos);
                     entity.setElevation(nextElevation);
-                    addReport(doEntityDisplacementMinefieldCheck(entity,
-                                                                 curPos, nextPos, nextElevation));
+                    process(server.new EntityDisplacementMinefieldCheck(entity,
+                            curPos, nextPos, nextElevation), game);
                     curPos = nextPos;
                 } // End buildings-suffer-too
 
@@ -734,24 +743,27 @@ public class EntitySkid extends EntityRuleHandler {
                 // ASSUMPTION: infantry take no damage from the
                 // building absorbing damage from
                 // Tanks and Mechs being charged.
-                addReport(damageInfantryIn(bldg, chargeDamage, nextPos));
+                process(server.new BuildingDamageToInfantry(bldg, chargeDamage, nextPos), game);
 
                 // If a building still stands, then end the skid,
                 // and add it to the list of affected buildings.
                 if (bldg.getCurrentCF(nextPos) > 0) {
                     stopTheSkid = true;
-                    if (bldg.rollBasement(nextPos, game.getBoard(),
-                                          vPhaseReport)) {
+                    Vector<Report> phaseReports = new Vector<>();
+                    boolean basement = bldg.rollBasement(nextPos, game.getBoard(),
+                            phaseReports);
+                    addReport(phaseReports);
+                    if (basement) {
                         addPacket(createHexChangePacket(nextPos, game.getBoard().getHex(nextPos)));
                         Vector<Building> buildings = new Vector<Building>();
                         buildings.add(bldg);
-                        sendChangedBuildings(buildings);
+                        addPacket(createUpdateBuildingPacket(buildings));
                     }
-                    addChild(new Server.BuildingCollapseDuringMovement(entity, bldg, nextPos, true));
+                    process(server.new BuildingCollapseDuringMovement(entity, bldg, nextPos, true), game);
                 } else {
                     // otherwise it collapses immediately on our head
-                    checkForCollapse(bldg, game.getPositionMap(), nextPos,
-                                     true, vPhaseReport);
+                    process(server.new BuildingCollapseCheck(bldg, game.getPositionMap(),
+                            nextPos, true), game);
                 }
 
             } // End handle-building.
@@ -764,15 +776,17 @@ public class EntitySkid extends EntityRuleHandler {
             // Update entity position and elevation
             entity.setPosition(nextPos);
             entity.setElevation(nextElevation);
-            addReport(doEntityDisplacementMinefieldCheck(entity, curPos,
-                                                         nextPos, nextElevation));
+            process(server.new EntityDisplacementMinefieldCheck(entity, curPos,
+                    nextPos, nextElevation), game);
             skidDistance++;
 
             // Check for collapse of any building the entity might be on
             Building roof = game.getBoard().getBuildingAt(nextPos);
             if (roof != null) {
-                if (checkForCollapse(roof, game.getPositionMap(), nextPos,
-                                     true, vPhaseReport)) {
+                Server.BuildingCollapseCheck check = server.new BuildingCollapseCheck(roof,
+                        game.getPositionMap(), nextPos, true);
+                process(check, game);
+                if (check.isCollapsed()) {
                     break; // stop skidding if the building collapsed
                 }
             }
@@ -794,16 +808,16 @@ public class EntitySkid extends EntityRuleHandler {
                         && (entity instanceof Tank)
                         && (entity.getMovementMode() != EntityMovementMode.HOVER)
                         && (entity.getMovementMode() != EntityMovementMode.WIGE)) {
-                    addReport(destroyEntity(entity,
-                            "skidded into a watery grave", false, true));
+                    process(server.new EntityDestruction(entity,
+                            "skidded into a watery grave", false, true), game);
                 }
 
                 // otherwise, damage is weight/5 in 5pt clusters
                 int damage = ((int) entity.getWeight() + 4) / 5;
                 while (damage > 0) {
-                    addReport(damageEntity(entity, entity.rollHitLocation(
+                    process(server.new EntityDamage(entity, entity.rollHitLocation(
                             ToHitData.HIT_NORMAL, ToHitData.SIDE_FRONT),
-                            Math.min(5, damage)));
+                            Math.min(5, damage)), game);
                     damage -= 5;
                 }
                 // and unit is immobile
@@ -835,10 +849,10 @@ public class EntitySkid extends EntityRuleHandler {
                     nextHex.removeTerrain(Terrains.MAGMA);
                     nextHex.addTerrain(Terrains.getTerrainFactory()
                                                .createTerrain(Terrains.MAGMA, 2));
-                    sendChangedHex(curPos);
+                    addPacket(createHexChangePacket(curPos, game.getBoard().getHex(curPos)));
                     for (Entity en : game.getEntitiesVector(curPos)) {
                         if (en != entity) {
-                            doMagmaDamage(en, false);
+                            process(server.new MagmaDamage(en, false), game);
                         }
                     }
                 }
@@ -846,8 +860,8 @@ public class EntitySkid extends EntityRuleHandler {
 
             // check for entering liquid magma
             if ((nextHex.terrainLevel(Terrains.MAGMA) == 2)
-                && (nextElevation == 0)) {
-                doMagmaDamage(entity, false);
+                    && (nextElevation == 0)) {
+                process(server.new MagmaDamage(entity, false), game);
             }
 
             // is the next hex a swamp?
@@ -870,7 +884,7 @@ public class EntitySkid extends EntityRuleHandler {
                 r.add(entity.getDisplayName(), true);
                 addReport(r);
                 // check for quicksand
-                addReport(checkQuickSand(nextPos));
+                process(server.new SwampToQuicksand(nextPos), game);
                 // check for accidental stacking violation
                 Entity violation = Compute.stackingViolation(game,
                         entity.getId(), curPos);
@@ -878,11 +892,10 @@ public class EntitySkid extends EntityRuleHandler {
                     // target gets displaced, because of low elevation
                     Coords targetDest = Compute.getValidDisplacement(game,
                                                                      entity.getId(), curPos, direction);
-                    addReport(doEntityDisplacement(violation, curPos,
-                                                   targetDest, new PilotingRollData(violation.getId(),
-                                                                                    0, "domino effect")));
+                    process(server.new EntityDisplacement(violation, curPos, targetDest,
+                            new PilotingRollData(violation.getId(), 0, "domino effect")), game);
                     // Update the violating entity's postion on the client.
-                    entityUpdate(violation.getId());
+                    process(server.new EntityUpdate(violation.getId()), game);
                 }
                 // stay here and stop skidding, see bug 1115608
                 break;
@@ -892,7 +905,7 @@ public class EntitySkid extends EntityRuleHandler {
             // Update the position and keep skidding.
             curPos = nextPos;
             curHex = nextHex;
-            elevation = nextElevation;
+            currentElevation = nextElevation;
             r = new Report(2085);
             r.subject = entity.getId();
             r.indent();
@@ -900,7 +913,7 @@ public class EntitySkid extends EntityRuleHandler {
             addReport(r);
             
             if (flip && entity instanceof Tank) {
-                doVehicleFlipDamage((Tank)entity, flipDamage, direction < 3, skidDistance - 1);
+                doVehicleFlipDamage(flipDamage, game);
             }
 
         } // Handle the next skid hex.
@@ -919,7 +932,7 @@ public class EntitySkid extends EntityRuleHandler {
             if (null == nextPos) {
                 // But I don't trust the assumption fully.
                 // Report the error and try to continue.
-                logError(METHOD_NAME,
+                DefaultMmLogger.getInstance().error(getClass(), METHOD_NAME,
                         "The skid of " + entity.getShortName()
                                 + " should displace " + target.getShortName()
                                 + " in hex " + curPos.getBoardNum()
@@ -931,9 +944,9 @@ public class EntitySkid extends EntityRuleHandler {
             r.indent();
             r.newlines = 0;
             addReport(r);
-            addReport(doEntityDisplacement(target, curPos, nextPos, null));
-            addReport(doEntityDisplacementMinefieldCheck(entity, curPos,
-                                                         nextPos, entity.getElevation()));
+            process(server.new EntityDisplacement(target, curPos, nextPos, null), game);
+            process(server.new EntityDisplacementMinefieldCheck(entity, curPos,
+                    nextPos, entity.getElevation()), game);
             target = Compute.stackingViolation(game, entity.getId(), curPos);
         }
 
@@ -967,29 +980,30 @@ public class EntitySkid extends EntityRuleHandler {
                 HitData hit = entity.rollHitLocation(ToHitData.HIT_NORMAL,
                                                      ToHitData.SIDE_FRONT);
                 hit.setGeneralDamageType(HitData.DAMAGE_PHYSICAL);
-                addReport(damageEntity(entity, hit, cluster));
+                process(server.new EntityDamage(entity, hit, cluster), game);
                 damage -= cluster;
             }
             addNewLines();
         }
 
         if (flip && entity instanceof Tank) {
-            addChild(new Server.CriticalHitHandler(entity, Entity.NONE,
-                    new CriticalSlot(0, Tank.CRIT_CREW_STUNNED), true, 0, false));
+            process(server.new CriticalHitHandler(entity, Entity.NONE,
+                    new CriticalSlot(0, Tank.CRIT_CREW_STUNNED), true, 0, false), game);
         } else if (flip && entity instanceof QuadVee && entity.getConversionMode() == QuadVee.CONV_MODE_VEHICLE) {
             // QuadVees don't suffer stunned crew criticals; require PSR to avoid damage instead.
             PilotingRollData prd = entity.getBasePilotingRoll();
-            addChild(Server.PilotFallDamage(entity, 1, prd));            
+            process(server.new PilotFallDamage(entity, 1, prd), game);            
         }
 
         // Clean up the entity if it has been destroyed.
         if (entity.isDoomed()) {
             entity.setDestroyed(true);
             game.moveToGraveyard(entity.getId());
-            send(createRemoveEntityPacket(entity.getId()));
+            addPacket(createRemoveEntityPacket(entity.getId()));
 
             // The entity's movement is completed.
-            return true;
+            removeFromPlay = true;
+            return;
         }
 
         // Let the player know the ordeal is over.
@@ -998,8 +1012,46 @@ public class EntitySkid extends EntityRuleHandler {
         r.indent();
         addReport(r);
 
-        return false;
+        return;
     }
 
+    private void doVehicleFlipDamage(int damage, IGame game) {
+        HitData hit;
+        boolean startRight = direction < 3;
+        int flipCount = skidDistance - 1;
 
+        int index = flipCount % 4;
+        // If there is no turret, we do side-side-bottom
+        if (((Tank)entity).hasNoTurret()) {
+            index = flipCount % 3;
+            if (index > 0) {
+                index++;
+            }
+        }
+        switch (index) {
+        case 0:
+            hit = new HitData(startRight? Tank.LOC_RIGHT : Tank.LOC_LEFT);
+            break;
+        case 1:
+            hit = new HitData(Tank.LOC_TURRET);
+        case 2:
+            hit = new HitData(startRight? Tank.LOC_LEFT : Tank.LOC_RIGHT);
+            break;
+        default:
+            hit = null; //Motive damage instead
+        }
+        if (hit != null) {
+            hit.setGeneralDamageType(HitData.DAMAGE_PHYSICAL);
+            process(server.new EntityDamage(entity, hit, damage), game);
+            // If the vehicle has two turrets, they both take full damage.
+            if (hit.getLocation() == Tank.LOC_TURRET
+                    && !(((Tank)entity).hasNoDualTurret())) {
+                hit = new HitData(Tank.LOC_TURRET_2);
+                hit.setGeneralDamageType(HitData.DAMAGE_PHYSICAL);
+                process(server.new EntityDamage(entity, hit, damage), game);
+            }
+        } else {
+            process(server.new VehicleMotiveDamage((Tank)entity, 1), game);
+        }
+    }
 }

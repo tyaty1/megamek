@@ -23,7 +23,7 @@ import megamek.common.IEntityRemovalConditions;
 import megamek.common.net.Packet;
 
 /**
- * Base class for {@link RuleHandler RuleHandler}s involving a particular {@link Entity Entity}.
+ * Base class for {@link RuleHandler}s involving a particular {@link Entity}.
  * 
  * @author Neoancient
  *
@@ -39,11 +39,21 @@ public abstract class EntityRuleHandler extends RuleHandler {
     /**
      * Creates a packet detailing the removal of an entity.
      *
-     * @param entityId  - the <code>int</code> ID of the entity being removed.
-     * @param condition - the <code>int</code> condition the unit was in.
-     * @return A <code>Packet</code> to be sent to clients.
+     * @param entityId  - the {@code int} ID of the entity being removed.
+     * @return A {@link Packet} to be sent to clients.
+     */
+    protected Packet createRemoveEntityPacket(int entityId) {
+        return createRemoveEntityPacket(entityId, IEntityRemovalConditions.REMOVE_SALVAGEABLE);
+    }
+    
+    /**
+     * Creates a packet detailing the removal of an entity.
+     *
+     * @param entityId  - the ID of the entity being removed.
+     * @param condition - the condition the unit was in.
+     * @return A {@link Packet} to be sent to clients.
      * @throws IllegalArgumentException if condition is not a value of a constant
-     *         in {@link IEntityRemovalConditions IEntityRemovalConditions}
+     *         in {@link IEntityRemovalConditions}
      */
     protected Packet createRemoveEntityPacket(int entityId, int condition) {
         ArrayList<Integer> ids = new ArrayList<Integer>(1);
@@ -54,11 +64,11 @@ public abstract class EntityRuleHandler extends RuleHandler {
     /**
      * Creates a packet detailing the removal of a list of entities.
      *
-     * @param entityIds - the <code>int</code> ID of each entity being removed.
-     * @param condition - the <code>int</code> condition the units were in.
+     * @param entityIds - a {@link List} of IDs of each entity being removed.
+     * @param condition - the condition the units were in.
      * @return A {@link Packet Packet} to be sent to clients.
      * @throws IllegalArgumentException if condition is not a value of a constant
-     *         in {@link IEntityRemovalConditions IEntityRemovalConditions}
+     *         in {@link IEntityRemovalConditions}
      */
     protected Packet createRemoveEntityPacket(List<Integer> entityIds,
                                             int condition) {
