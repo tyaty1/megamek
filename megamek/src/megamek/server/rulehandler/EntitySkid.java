@@ -150,48 +150,8 @@ public class EntitySkid extends EntityRuleHandler {
             nextPos = curPos.translated(direction);
             // Is the next hex off the board?
             if (!game.getBoard().contains(nextPos)) {
-
-                // Can the entity skid off the map?
-                if (game.getOptions().booleanOption(OptionsConstants.BASE_PUSH_OFF_BOARD)) {
-                    // Yup. One dead entity.
-                    game.removeEntity(entity.getId(),
-                                      IEntityRemovalConditions.REMOVE_PUSHED);
-                    addPacket(createRemoveEntityPacket(entity.getId(),
-                                                  IEntityRemovalConditions.REMOVE_PUSHED));
-                    r = new Report(2030, Report.PUBLIC);
-                    r.addDesc(entity);
-                    addReport(r);
-
-                    for (Entity e : entity.getLoadedUnits()) {
-                        game.removeEntity(e.getId(),
-                                          IEntityRemovalConditions.REMOVE_PUSHED);
-                        addPacket(createRemoveEntityPacket(e.getId(),
-                                                      IEntityRemovalConditions.REMOVE_PUSHED));
-                    }
-                    Entity swarmer = game
-                            .getEntity(entity.getSwarmAttackerId());
-                    if (swarmer != null) {
-                        if (!swarmer.isDone()) {
-                            game.removeTurnFor(swarmer);
-                            swarmer.setDone(true);
-                            addPacket(createTurnVectorPacket(game));
-                        }
-                        game.removeEntity(swarmer.getId(),
-                                          IEntityRemovalConditions.REMOVE_PUSHED);
-                        addPacket(createRemoveEntityPacket(swarmer.getId(),
-                                                      IEntityRemovalConditions.REMOVE_PUSHED));
-                    }
-                    // The entity's movement is completed.
-                    removeFromPlay = true;
-                    return;
-
-                }
-                // Nope. Update the report.
-                r = new Report(2035);
-                r.subject = entity.getId();
-                r.indent();
-                addReport(r);
-                // Stay in the current hex and stop skidding.
+                checkSkidOffMap(game);
+                // Whether we can leave the map or not, the skid is finished
                 break;
             }
 
@@ -1013,6 +973,50 @@ public class EntitySkid extends EntityRuleHandler {
         addReport(r);
 
         return;
+    }
+
+    /**
+     * @param game The server's {@link IGame game} instance
+     */
+    protected void checkSkidOffMap(IGame game) {
+        Report r;
+        // Can the entity skid off the map?
+        if (game.getOptions().booleanOption(OptionsConstants.BASE_PUSH_OFF_BOARD)) {
+            // Yup. One dead entity.
+            game.removeEntity(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED);
+            addPacket(createRemoveEntityPacket(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED));
+            r = new Report(2030, Report.PUBLIC);
+            r.addDesc(entity);
+            addReport(r);
+
+            for (Entity e : entity.getLoadedUnits()) {
+                game.removeEntity(e.getId(),
+                                  IEntityRemovalConditions.REMOVE_PUSHED);
+                addPacket(createRemoveEntityPacket(e.getId(),
+                                              IEntityRemovalConditions.REMOVE_PUSHED));
+            }
+            Entity swarmer = game
+                    .getEntity(entity.getSwarmAttackerId());
+            if (swarmer != null) {
+                if (!swarmer.isDone()) {
+                    game.removeTurnFor(swarmer);
+                    swarmer.setDone(true);
+                    addPacket(createTurnVectorPacket(game));
+                }
+                game.removeEntity(swarmer.getId(),
+                                  IEntityRemovalConditions.REMOVE_PUSHED);
+                addPacket(createRemoveEntityPacket(swarmer.getId(),
+                                              IEntityRemovalConditions.REMOVE_PUSHED));
+            }
+            // The entity's movement is completed.
+            removeFromPlay = true;
+        } else {
+            // Nope. Update the report.
+            r = new Report(2035);
+            r.subject = entity.getId();
+            r.indent();
+            addReport(r);
+        }
     }
 
     private void doVehicleFlipDamage(int damage, IGame game) {
