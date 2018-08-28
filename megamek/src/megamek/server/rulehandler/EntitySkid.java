@@ -34,7 +34,6 @@ import megamek.common.IEntityRemovalConditions;
 import megamek.common.IGame;
 import megamek.common.IHex;
 import megamek.common.Infantry;
-import megamek.common.LandAirMech;
 import megamek.common.Mech;
 import megamek.common.MoveStep;
 import megamek.common.PilotingRollData;
@@ -132,6 +131,7 @@ public class EntitySkid extends EntityRuleHandler {
     private IHex curHex;
     private int distRemaining;
     private int currentElevation;
+    private int nextElevation;
     private int curAltitude;
     private int nextAltitude;
     private int skidDistance; // Actual distance moved
@@ -156,48 +156,7 @@ public class EntitySkid extends EntityRuleHandler {
             distRemaining -= nextHex.movementCost(entity) + 1;
             calcNextElevation(nextHex);
 
-            // The elevation the skidding unit will occupy in next hex
-            int nextElevation = nextAltitude - nextHex.surface();
-
-            boolean crashedIntoTerrain = curAltitude < nextAltitude;
-            if (entity.getMovementMode() == EntityMovementMode.VTOL) {
-                if ((nextElevation == 0)
-                    || ((nextElevation == 1) && (nextHex
-                                                         .containsTerrain(Terrains.WOODS) || nextHex
-                                                         .containsTerrain(Terrains.JUNGLE)))) {
-                    crashedIntoTerrain = true;
-                }
-            }
-
-            if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
-                Building bldg = game.getBoard().getBuildingAt(nextPos);
-
-                if (bldg.getType() == Building.WALL) {
-                    crashedIntoTerrain = true;
-                }
-
-                if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
-                    crashedIntoTerrain = true;
-                }
-            }
-
-            // however WIGE can gain 1 level to avoid crashing into the terrain.
-            if (entity.getMovementMode() == EntityMovementMode.WIGE && (currentElevation > 0)) {
-                if (curAltitude == nextHex.floor()) {
-                    nextElevation = 1;
-                    crashedIntoTerrain = false;
-                } else if ((entity instanceof LandAirMech) && (curAltitude + 1 == nextHex.floor())) {
-                    // LAMs in airmech mode skid across terrain that is two levels higher rather than crashing,
-                    // Reset the skid distance for skid damage calculations.
-                    nextElevation = 0;
-                    skidDistance = 0;
-                    crashedIntoTerrain = false;
-                    r = new Report(2102);
-                    r.subject = entity.getId();
-                    r.indent();
-                    addReport(r);
-                }
-            }
+            boolean crashedIntoTerrain = checkForCrashIntoTerrain(game, nextHex);
 
             Entity crashDropship = null;
             for (Entity en : game.getEntitiesVector(nextPos)) {
@@ -926,9 +885,54 @@ public class EntitySkid extends EntityRuleHandler {
     }
     
     /**
-     * Determines the elevation in the next hex
+     * @param game The server's {@link IGame game} instance
+     */
+    protected void checkSkidOffMap(IGame game) {
+        Report r;
+        // Can the entity skid off the map?
+        if (game.getOptions().booleanOption(OptionsConstants.BASE_PUSH_OFF_BOARD)) {
+            // Yup. One dead entity.
+            game.removeEntity(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED);
+            addPacket(createRemoveEntityPacket(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED));
+            r = new Report(2030, Report.PUBLIC);
+            r.addDesc(entity);
+            addReport(r);
+
+            for (Entity e : entity.getLoadedUnits()) {
+                game.removeEntity(e.getId(),
+                                  IEntityRemovalConditions.REMOVE_PUSHED);
+                addPacket(createRemoveEntityPacket(e.getId(),
+                                              IEntityRemovalConditions.REMOVE_PUSHED));
+            }
+            Entity swarmer = game
+                    .getEntity(entity.getSwarmAttackerId());
+            if (swarmer != null) {
+                if (!swarmer.isDone()) {
+                    game.removeTurnFor(swarmer);
+                    swarmer.setDone(true);
+                    addPacket(createTurnVectorPacket(game));
+                }
+                game.removeEntity(swarmer.getId(),
+                                  IEntityRemovalConditions.REMOVE_PUSHED);
+                addPacket(createRemoveEntityPacket(swarmer.getId(),
+                                              IEntityRemovalConditions.REMOVE_PUSHED));
+            }
+            // The entity's movement is completed.
+            removeFromPlay = true;
+        } else {
+            // Nope. Update the report.
+            r = new Report(2035);
+            r.subject = entity.getId();
+            r.indent();
+            addReport(r);
+        }
+    }
+    
+    /**
+     * Determines the {@link Entity}'s logical altitude in the next hex based on terrain. A drop in
+     * altitude may mean a fall, and a rise in altitude usually means a crash into terrain.
      * 
-     * @param nextHex
+     * @param nextHex The next hex the Entity will skid/sideslip into.
      */
     protected void calcNextElevation(IHex nextHex) {
         // By default, the unit is going to fall to the floor of the next
@@ -993,50 +997,58 @@ public class EntitySkid extends EntityRuleHandler {
                 }
             }
         }
+        // The elevation the skidding unit will occupy in next hex
+        nextElevation = nextAltitude - nextHex.surface();
     }
 
     /**
-     * @param game The server's {@link IGame game} instance
+     * An {@link Entity} that skids into a hex with a surface higher than what it occupied in the previous
+     * hex will usually crash into terrain. Exceptions are WiGE and similar movement, which allows it
+     * to rise one elevation level. Airborne units can crash into terrain even if flying above the surface
+     * of the hex, if the terrain is woods or jungle.
+     * 
+     * @param game The server's {@link IGame game} instance.
+     * 
+     * @return Whether the {@link Entity} crashes into the terrain of the next hex.
      */
-    protected void checkSkidOffMap(IGame game) {
-        Report r;
-        // Can the entity skid off the map?
-        if (game.getOptions().booleanOption(OptionsConstants.BASE_PUSH_OFF_BOARD)) {
-            // Yup. One dead entity.
-            game.removeEntity(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED);
-            addPacket(createRemoveEntityPacket(entity.getId(), IEntityRemovalConditions.REMOVE_PUSHED));
-            r = new Report(2030, Report.PUBLIC);
-            r.addDesc(entity);
-            addReport(r);
-
-            for (Entity e : entity.getLoadedUnits()) {
-                game.removeEntity(e.getId(),
-                                  IEntityRemovalConditions.REMOVE_PUSHED);
-                addPacket(createRemoveEntityPacket(e.getId(),
-                                              IEntityRemovalConditions.REMOVE_PUSHED));
-            }
-            Entity swarmer = game
-                    .getEntity(entity.getSwarmAttackerId());
-            if (swarmer != null) {
-                if (!swarmer.isDone()) {
-                    game.removeTurnFor(swarmer);
-                    swarmer.setDone(true);
-                    addPacket(createTurnVectorPacket(game));
-                }
-                game.removeEntity(swarmer.getId(),
-                                  IEntityRemovalConditions.REMOVE_PUSHED);
-                addPacket(createRemoveEntityPacket(swarmer.getId(),
-                                              IEntityRemovalConditions.REMOVE_PUSHED));
-            }
-            // The entity's movement is completed.
-            removeFromPlay = true;
-        } else {
-            // Nope. Update the report.
-            r = new Report(2035);
-            r.subject = entity.getId();
-            r.indent();
-            addReport(r);
+    protected boolean checkForCrashIntoTerrain(IGame game, IHex nextHex) {
+        if ((entity.getMovementMode() == EntityMovementMode.VTOL)
+                && (nextHex.containsTerrain(Terrains.WOODS)
+                        || nextHex.containsTerrain(Terrains.JUNGLE))
+                && (nextAltitude < nextHex.ceiling())) {
+            return true;
         }
+
+        // Walls and gun emplacements don't have roofs to land on
+        if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
+            Building bldg = game.getBoard().getBuildingAt(nextPos);
+
+            if ((bldg.getType() == Building.WALL) 
+                    || (bldg.getType() == Building.GUN_EMPLACEMENT)) {
+                return true;
+            }
+        }
+
+        // however WIGE can gain 1 level to avoid crashing into the terrain.
+        if ((entity.getMovementMode() == EntityMovementMode.WIGE) && (currentElevation > 0)) {
+            if (curAltitude == nextHex.floor()) {
+                nextElevation = 1;
+                return false;
+            } else if ((entity.hasETypeFlag(Entity.ETYPE_LAND_AIR_MECH))
+                    && (curAltitude + 1 == nextHex.floor())) {
+                // LAMs in airmech mode skid across terrain that is two levels higher rather than crashing,
+                // Reset the skid distance for skid damage calculations.
+                nextElevation = 0;
+                skidDistance = 0;
+                Report r = new Report(2102);
+                r.subject = entity.getId();
+                r.indent();
+                addReport(r);
+                return false;
+            }
+        }
+        // None of the exceptions apply; compare surface heights
+        return curAltitude < nextAltitude;
     }
 
     private void doVehicleFlipDamage(int damage, IGame game) {
@@ -1099,6 +1111,10 @@ public class EntitySkid extends EntityRuleHandler {
 
     protected int getCurrentElevation() {
         return currentElevation;
+    }
+    
+    protected int getNextElevation() {
+        return nextElevation;
     }
 
     protected int getCurAltitude() {
