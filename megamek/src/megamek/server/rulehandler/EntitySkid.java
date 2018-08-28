@@ -132,18 +132,15 @@ public class EntitySkid extends EntityRuleHandler {
     private IHex curHex;
     private int distRemaining;
     private int currentElevation;
-    private int skidDistance;
+    private int curAltitude;
+    private int nextAltitude;
+    private int skidDistance; // Actual distance moved
     
     @Override
     public void resolve(IGame game) {
         final String METHOD_NAME = "resolve(IGame)"; //$NON-NLS-1$
-        nextPos = start;
-        curPos = nextPos;
-        curHex = game.getBoard().getHex(start);
-        distRemaining = origDistance;
-        currentElevation = startElevation;
+        initStartingValues(game);
         Report r;
-        skidDistance = 0; // actual distance moved
         // Flipping vehicles take tonnage/10 points of damage for every hex they enter.
         int flipDamage = (int)Math.ceil(entity.getWeight() / 10.0);
         while (!entity.isDoomed() && (distRemaining > 0)) {
@@ -157,68 +154,7 @@ public class EntitySkid extends EntityRuleHandler {
 
             IHex nextHex = game.getBoard().getHex(nextPos);
             distRemaining -= nextHex.movementCost(entity) + 1;
-            // By default, the unit is going to fall to the floor of the next
-            // hex
-            int curAltitude = currentElevation + curHex.getLevel();
-            int nextAltitude = nextHex.floor();
-
-            // but VTOL keep altitude
-            if (entity.getMovementMode() == EntityMovementMode.VTOL) {
-                nextAltitude = Math.max(nextAltitude, curAltitude);
-            } else if (entity.getMovementMode() == EntityMovementMode.WIGE
-                    && currentElevation > 0 && nextAltitude < curAltitude) {
-                // Airborne WiGEs drop to one level above the surface
-                nextAltitude++;
-            } else {
-                // Is there a building to "catch" the unit?
-                if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
-                    // unit will land on the roof, if at a higher level,
-                    // otherwise it will skid through the wall onto the same
-                    // floor.
-                    // don't change this if the building starts at an elevation
-                    // higher than the unit
-                    // (e.g. the building is on a hill). Otherwise, we skid into
-                    // solid earth.
-                    if (curAltitude >= nextHex.floor()) {
-                        nextAltitude = Math
-                                .min(curAltitude,
-                                     nextHex.getLevel()
-                                     + nextHex
-                                             .terrainLevel(Terrains.BLDG_ELEV));
-                    }
-                }
-                // Is there a bridge to "catch" the unit?
-                if (nextHex.containsTerrain(Terrains.BRIDGE)) {
-                    // unit will land on the bridge, if at a higher level,
-                    // and the bridge exits towards the current hex,
-                    // otherwise the bridge has no effect
-                    int exitDir = (direction + 3) % 6;
-                    exitDir = 1 << exitDir;
-                    if ((nextHex.getTerrain(Terrains.BRIDGE).getExits() & exitDir) == exitDir) {
-                        nextAltitude = Math
-                                .min(curAltitude,
-                                     Math.max(
-                                             nextAltitude,
-                                             nextHex.getLevel()
-                                             + nextHex
-                                                     .terrainLevel(Terrains.BRIDGE_ELEV)));
-                    }
-                }
-                if ((nextAltitude <= nextHex.surface())
-                    && (curAltitude >= curHex.surface())) {
-                    // Hovercraft can "skid" over water.
-                    // all units can skid over ice.
-                    if ((entity instanceof Tank)
-                            && (entity.getMovementMode() == EntityMovementMode.HOVER)
-                            && nextHex.containsTerrain(Terrains.WATER)) {
-                        nextAltitude = nextHex.surface();
-                    } else {
-                        if (nextHex.containsTerrain(Terrains.ICE)) {
-                            nextAltitude = nextHex.surface();
-                        }
-                    }
-                }
-            }
+            calcNextElevation(nextHex);
 
             // The elevation the skidding unit will occupy in next hex
             int nextElevation = nextAltitude - nextHex.surface();
@@ -976,6 +912,90 @@ public class EntitySkid extends EntityRuleHandler {
     }
 
     /**
+     * Sets the values that change while processing the skid to their initial values.
+     * 
+     * @param game The server's {@link IGame game} instance.
+     */
+    protected void initStartingValues(IGame game) {
+        nextPos = start;
+        curPos = nextPos;
+        curHex = game.getBoard().getHex(start);
+        distRemaining = origDistance;
+        currentElevation = startElevation;
+        skidDistance = 0;
+    }
+    
+    /**
+     * Determines the elevation in the next hex
+     * 
+     * @param nextHex
+     */
+    protected void calcNextElevation(IHex nextHex) {
+        // By default, the unit is going to fall to the floor of the next
+        // hex
+        curAltitude = currentElevation + curHex.getLevel();
+        nextAltitude = nextHex.floor();
+
+        // but VTOL keep altitude
+        if (entity.getMovementMode() == EntityMovementMode.VTOL) {
+            nextAltitude = Math.max(nextAltitude, curAltitude);
+        } else if (entity.getMovementMode() == EntityMovementMode.WIGE
+                && currentElevation > 0 && nextAltitude < curAltitude) {
+            // Airborne WiGEs drop to one level above the surface
+            nextAltitude++;
+        } else {
+            // Is there a building to "catch" the unit?
+            if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
+                // unit will land on the roof, if at a higher level,
+                // otherwise it will skid through the wall onto the same
+                // floor.
+                // don't change this if the building starts at an elevation
+                // higher than the unit
+                // (e.g. the building is on a hill). Otherwise, we skid into
+                // solid earth.
+                if (curAltitude >= nextHex.floor()) {
+                    nextAltitude = Math
+                            .min(curAltitude,
+                                 nextHex.getLevel()
+                                 + nextHex
+                                         .terrainLevel(Terrains.BLDG_ELEV));
+                }
+            }
+            // Is there a bridge to "catch" the unit?
+            if (nextHex.containsTerrain(Terrains.BRIDGE)) {
+                // unit will land on the bridge, if at a higher level,
+                // and the bridge exits towards the current hex,
+                // otherwise the bridge has no effect
+                int exitDir = (direction + 3) % 6;
+                exitDir = 1 << exitDir;
+                if ((nextHex.getTerrain(Terrains.BRIDGE).getExits() & exitDir) == exitDir) {
+                    nextAltitude = Math
+                            .min(curAltitude,
+                                 Math.max(
+                                         nextAltitude,
+                                         nextHex.getLevel()
+                                         + nextHex
+                                                 .terrainLevel(Terrains.BRIDGE_ELEV)));
+                }
+            }
+            if ((nextAltitude <= nextHex.surface())
+                && (curAltitude >= curHex.surface())) {
+                // Hovercraft can "skid" over water.
+                // all units can skid over ice.
+                if ((entity instanceof Tank)
+                        && (entity.getMovementMode() == EntityMovementMode.HOVER)
+                        && nextHex.containsTerrain(Terrains.WATER)) {
+                    nextAltitude = nextHex.surface();
+                } else {
+                    if (nextHex.containsTerrain(Terrains.ICE)) {
+                        nextAltitude = nextHex.surface();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * @param game The server's {@link IGame game} instance
      */
     protected void checkSkidOffMap(IGame game) {
@@ -1058,4 +1078,39 @@ public class EntitySkid extends EntityRuleHandler {
             process(server.new VehicleMotiveDamage((Tank)entity, 1), game);
         }
     }
+
+    /* Getters for unit tests */
+    
+    protected Coords getNextPos() {
+        return nextPos;
+    }
+
+    protected Coords getCurPos() {
+        return curPos;
+    }
+
+    protected IHex getCurHex() {
+        return curHex;
+    }
+
+    protected int getDistRemaining() {
+        return distRemaining;
+    }
+
+    protected int getCurrentElevation() {
+        return currentElevation;
+    }
+
+    protected int getCurAltitude() {
+        return curAltitude;
+    }
+
+    protected int getNextAltitude() {
+        return nextAltitude;
+    }
+
+    protected int getSkidDistance() {
+        return skidDistance;
+    }
+
 }

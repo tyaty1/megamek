@@ -9,12 +9,17 @@ import org.junit.Test;
 
 import megamek.common.Coords;
 import megamek.common.Entity;
+import megamek.common.EntityMovementMode;
 import megamek.common.EntityMovementType;
 import megamek.common.Game;
+import megamek.common.Hex;
 import megamek.common.IBoard;
 import megamek.common.IGame;
 import megamek.common.IPlayer;
 import megamek.common.MoveStep;
+import megamek.common.Tank;
+import megamek.common.Terrain;
+import megamek.common.Terrains;
 import megamek.common.net.Packet;
 import megamek.common.options.GameOptions;
 import megamek.server.Server;
@@ -84,6 +89,279 @@ public class EntitySkidTest {
         assertTrue(game.getEntitiesVector().contains(entity));
         assertTrue(game.getEntitiesVector().contains(loaded));
         assertTrue(game.getEntitiesVector().contains(swarmer));
+    }
+
+    @Test
+    public void entityDropsToLowerHex() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void entityClimbsToHigherHex() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex higherHex = new Hex();
+        higherHex.setLevel(3);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+        
+        skid.calcNextElevation(higherHex);
+        
+        assertEquals(higherHex.floor(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void vtolMaintainsElevation() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.VTOL);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 5, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(skid.getCurrentElevation() + curHex.floor(), skid.getNextAltitude());
+    }
+    
+    @Test
+    public void wigeRemainsAboveSurface() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.WIGE);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor() + 1, skid.getNextAltitude());
+    }
+    
+    @Test
+    public void groundedWIGEDropsToSurface() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.WIGE);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 0, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void entityDropsToRoofOfBuilding() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(5);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.BLDG_ELEV, 1));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.ceiling(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void entityDropsToBridgeWithCorrectExitDirection() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(5);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.BRIDGE, 1, true, (1 << 3)));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.ceiling(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void entityMissesBridgeWithOtherExitDirection() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(5);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.BRIDGE, 1, true, 1));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void entityMissesHigherBridge() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(3);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.BRIDGE, 3, true, (1 << 3)));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor(), skid.getNextAltitude());
+    }
+
+    @Test
+    public void hoverTankSkidsAcrossWater() {
+        Tank tank = mock(Tank.class);
+        when(tank.getMovementMode()).thenReturn(EntityMovementMode.HOVER);
+        IGame game = new Game();
+        game.addEntity(tank, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.WATER, 3));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(tank, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.surface(), skid.getNextAltitude());
+        assertTrue(lowerHex.floor() < skid.getNextAltitude());
+    }
+
+    @Test
+    public void nonHoverTankSkidsIntoWater() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.WATER, 3));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.floor(), skid.getNextAltitude());
+        assertTrue(lowerHex.surface() > skid.getNextAltitude());
+    }
+
+    @Test
+    public void entitySkidsAcrossIce() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex lowerHex = new Hex();
+        lowerHex.setLevel(1);
+        lowerHex.addTerrain(new Terrain(Terrains.ICE, 3));
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+
+        skid.calcNextElevation(lowerHex);
+
+        assertEquals(lowerHex.surface(), skid.getNextAltitude());
     }
 
 }
