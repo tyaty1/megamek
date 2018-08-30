@@ -509,4 +509,24 @@ public class EntitySkidTest {
         assertEquals(skid.getNextElevation(), 0);
     }
 
+    @Test
+    public void crashIntoTerrainStopsSkid() {
+        Entity entity = mock(Entity.class);
+        when(entity.getMovementMode()).thenReturn(EntityMovementMode.BIPED);
+        IGame game = new Game();
+        game.addEntity(entity, false);
+        Hex curHex = new Hex();
+        curHex.setLevel(2);
+        Hex higherHex = new Hex();
+        higherHex.setLevel(4);
+        IBoard board = mock(IBoard.class);
+        when(board.getHex(any(Coords.class))).thenReturn(curHex);
+        game.setBoard(board);
+        EntitySkid skid = new EntitySkid(entity, new Coords(0, 0), 1, 0, 5, mock(MoveStep.class),
+                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+        skid.initStartingValues(game);
+        skid.processCollisionWithTerrain(game, higherHex);
+        
+        assertEquals(skid.getDistRemaining(), 0);
+    }
 }

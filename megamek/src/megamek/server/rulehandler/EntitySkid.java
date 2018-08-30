@@ -167,108 +167,7 @@ public class EntitySkid extends EntityRuleHandler {
             }
 
             if (crashedIntoTerrain) {
-
-                if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
-                    Building bldg = game.getBoard().getBuildingAt(nextPos);
-
-                    // If you crash into a wall you want to stop in the hex
-                    // before the wall not in the wall
-                    // Like a building.
-                    if (bldg.getType() == Building.WALL) {
-                        r = new Report(2047);
-                    } else if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
-                        r = new Report(2049);
-                    } else {
-                        r = new Report(2045);
-                    }
-
-                } else {
-                    r = new Report(2045);
-                }
-
-                r.subject = entity.getId();
-                r.indent();
-                r.add(nextPos.getBoardNum(), true);
-                addReport(r);
-
-                if ((entity.getMovementMode() == EntityMovementMode.WIGE)
-                    || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
-                    int hitSide = (step.getFacing() - direction) + 6;
-                    hitSide %= 6;
-                    int table = 0;
-                    switch (hitSide) {// quite hackish...I think it ought to
-                        // work, though.
-                        case 0:// can this happen?
-                            table = ToHitData.SIDE_FRONT;
-                            break;
-                        case 1:
-                        case 2:
-                            table = ToHitData.SIDE_LEFT;
-                            break;
-                        case 3:
-                            table = ToHitData.SIDE_REAR;
-                            break;
-                        case 4:
-                        case 5:
-                            table = ToHitData.SIDE_RIGHT;
-                            break;
-                    }
-                    currentElevation = nextElevation;
-                    if (entity instanceof Tank) {
-                        process(server.new AirborneVehicleCrash((Tank) entity, false, true,
-                                distRemaining, curPos, currentElevation, table), game);
-                    }
-
-                    if ((nextHex.containsTerrain(Terrains.WATER) && !nextHex
-                            .containsTerrain(Terrains.ICE))
-                            || nextHex.containsTerrain(Terrains.WOODS)
-                            || nextHex.containsTerrain(Terrains.JUNGLE)) {
-                        process(server.new EntityDestruction(entity,
-                                "could not land in crash site"), game);
-                    } else if (currentElevation < nextHex
-                            .terrainLevel(Terrains.BLDG_ELEV)) {
-                        Building bldg = game.getBoard().getBuildingAt(nextPos);
-
-                        // If you crash into a wall you want to stop in the hex
-                        // before the wall not in the wall
-                        // Like a building.
-                        if (bldg.getType() == Building.WALL) {
-                            process(server.new EntityDestruction(entity,
-                                    "crashed into a wall"), game);
-                            break;
-                        }
-                        if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
-                            process(server.new EntityDestruction(entity,
-                                    "crashed into a gun emplacement"), game);
-                            break;
-                        }
-
-                        process(server.new EntityDestruction(entity, "crashed into building"), game);
-                    } else {
-                        entity.setPosition(nextPos);
-                        entity.setElevation(0);
-                        process(server.new EntityDisplacementMinefieldCheck(entity,
-                                curPos, nextPos, nextElevation), game);
-                    }
-                    curPos = nextPos;
-                    break;
-
-                }
-                // skidding into higher terrain does weight/20
-                // damage in 5pt clusters to front.
-                int damage = ((int) entity.getWeight() + 19) / 20;
-                while (damage > 0) {
-                    int table = ToHitData.HIT_NORMAL;
-                    int side = entity.sideTable(nextPos);
-                    if (entity instanceof Protomech) {
-                        table = ToHitData.HIT_SPECIAL_PROTO;
-                    }
-                    process(server.new EntityDamage(entity,
-                                           entity.rollHitLocation(table, side),
-                                           Math.min(5, damage)), game);
-                    damage -= 5;
-                }
-                // Stay in the current hex and stop skidding.
+                processCollisionWithTerrain(game, nextHex);
                 break;
             }
 
@@ -875,7 +774,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @param game The server's {@link IGame game} instance.
      */
-    protected void initStartingValues(IGame game) {
+    void initStartingValues(IGame game) {
         nextPos = start;
         curPos = nextPos;
         curHex = game.getBoard().getHex(start);
@@ -887,7 +786,7 @@ public class EntitySkid extends EntityRuleHandler {
     /**
      * @param game The server's {@link IGame game} instance
      */
-    protected void checkSkidOffMap(IGame game) {
+    void checkSkidOffMap(IGame game) {
         Report r;
         // Can the entity skid off the map?
         if (game.getOptions().booleanOption(OptionsConstants.BASE_PUSH_OFF_BOARD)) {
@@ -934,7 +833,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @param nextHex The next hex the Entity will skid/sideslip into.
      */
-    protected void calcNextElevation(IHex nextHex) {
+    void calcNextElevation(IHex nextHex) {
         // By default, the unit is going to fall to the floor of the next
         // hex
         curAltitude = currentElevation + curHex.getLevel();
@@ -1011,7 +910,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @return Whether the {@link Entity} crashes into the terrain of the next hex.
      */
-    protected boolean checkForCrashIntoTerrain(IGame game, IHex nextHex) {
+    boolean checkForCrashIntoTerrain(IGame game, IHex nextHex) {
         if ((entity.getMovementMode() == EntityMovementMode.VTOL)
                 && (nextHex.containsTerrain(Terrains.WOODS)
                         || nextHex.containsTerrain(Terrains.JUNGLE))
@@ -1050,8 +949,120 @@ public class EntitySkid extends EntityRuleHandler {
         // None of the exceptions apply; compare surface heights
         return curAltitude < nextAltitude;
     }
+    
+    /**
+     * Handles collision with terrain, including buildings.
+     *
+     * @param game
+     * @param nextHex
+     */
+    void processCollisionWithTerrain(IGame game, IHex nextHex) {
+        Report r;
+        if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
+            Building bldg = game.getBoard().getBuildingAt(nextPos);
 
-    private void doVehicleFlipDamage(int damage, IGame game) {
+            // If you crash into a wall you want to stop in the hex
+            // before the wall not in the wall
+            // Like a building.
+            if (bldg.getType() == Building.WALL) {
+                r = new Report(2047);
+            } else if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
+                r = new Report(2049);
+            } else {
+                r = new Report(2045);
+            }
+
+        } else {
+            r = new Report(2045);
+        }
+
+        r.subject = entity.getId();
+        r.indent();
+        r.add(nextPos.getBoardNum(), true);
+        addReport(r);
+
+        if ((entity.getMovementMode() == EntityMovementMode.WIGE)
+                || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
+            int hitSide = (step.getFacing() - direction) + 6;
+            hitSide %= 6;
+            int table = 0;
+            switch (hitSide) {// quite hackish...I think it ought to
+                // work, though.
+                case 0:// can this happen?
+                    table = ToHitData.SIDE_FRONT;
+                    break;
+                case 1:
+                case 2:
+                    table = ToHitData.SIDE_LEFT;
+                    break;
+                case 3:
+                    table = ToHitData.SIDE_REAR;
+                    break;
+                case 4:
+                case 5:
+                    table = ToHitData.SIDE_RIGHT;
+                    break;
+            }
+            currentElevation = nextElevation;
+            if (entity instanceof Tank) {
+                process(server.new AirborneVehicleCrash((Tank) entity, false, true,
+                        distRemaining, curPos, currentElevation, table), game);
+            }
+
+            if ((nextHex.containsTerrain(Terrains.WATER) && !nextHex
+                    .containsTerrain(Terrains.ICE))
+                    || nextHex.containsTerrain(Terrains.WOODS)
+                    || nextHex.containsTerrain(Terrains.JUNGLE)) {
+                process(server.new EntityDestruction(entity,
+                        "could not land in crash site"), game);
+            } else if (currentElevation < nextHex
+                    .terrainLevel(Terrains.BLDG_ELEV)) {
+                Building bldg = game.getBoard().getBuildingAt(nextPos);
+
+                // If you crash into a wall you want to stop in the hex
+                // before the wall not in the wall
+                // Like a building.
+                if (bldg.getType() == Building.WALL) {
+                    process(server.new EntityDestruction(entity,
+                            "crashed into a wall"), game);
+                    return;
+                }
+                if (bldg.getBldgClass() == Building.GUN_EMPLACEMENT) {
+                    process(server.new EntityDestruction(entity,
+                            "crashed into a gun emplacement"), game);
+                    return;
+                }
+
+                process(server.new EntityDestruction(entity, "crashed into building"), game);
+            } else {
+                entity.setPosition(nextPos);
+                entity.setElevation(0);
+                process(server.new EntityDisplacementMinefieldCheck(entity,
+                        curPos, nextPos, nextElevation), game);
+            }
+            curPos = nextPos;
+            return;
+
+        }
+        // skidding into higher terrain does weight/20
+        // damage in 5pt clusters to front.
+        int damage = ((int) entity.getWeight() + 19) / 20;
+        while (damage > 0) {
+            int table = ToHitData.HIT_NORMAL;
+            int side = entity.sideTable(nextPos);
+            if (entity instanceof Protomech) {
+                table = ToHitData.HIT_SPECIAL_PROTO;
+            }
+            process(server.new EntityDamage(entity,
+                                   entity.rollHitLocation(table, side),
+                                   Math.min(5, damage)), game);
+            damage -= 5;
+        }
+        // Stop skid
+        distRemaining = 0;
+    }
+
+    void doVehicleFlipDamage(int damage, IGame game) {
         HitData hit;
         boolean startRight = direction < 3;
         int flipCount = skidDistance - 1;
@@ -1093,39 +1104,39 @@ public class EntitySkid extends EntityRuleHandler {
 
     /* Getters for unit tests */
     
-    protected Coords getNextPos() {
+    Coords getNextPos() {
         return nextPos;
     }
 
-    protected Coords getCurPos() {
+    Coords getCurPos() {
         return curPos;
     }
 
-    protected IHex getCurHex() {
+    IHex getCurHex() {
         return curHex;
     }
 
-    protected int getDistRemaining() {
+    int getDistRemaining() {
         return distRemaining;
     }
 
-    protected int getCurrentElevation() {
+    int getCurrentElevation() {
         return currentElevation;
     }
     
-    protected int getNextElevation() {
+    int getNextElevation() {
         return nextElevation;
     }
 
-    protected int getCurAltitude() {
+    int getCurAltitude() {
         return curAltitude;
     }
 
-    protected int getNextAltitude() {
+    int getNextAltitude() {
         return nextAltitude;
     }
 
-    protected int getSkidDistance() {
+    int getSkidDistance() {
         return skidDistance;
     }
 
