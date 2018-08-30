@@ -129,6 +129,7 @@ public class EntitySkid extends EntityRuleHandler {
     private Coords nextPos;
     private Coords curPos;
     private IHex curHex;
+    private IHex nextHex;
     private int distRemaining;
     private int currentElevation;
     private int nextElevation;
@@ -144,19 +145,11 @@ public class EntitySkid extends EntityRuleHandler {
         // Flipping vehicles take tonnage/10 points of damage for every hex they enter.
         int flipDamage = (int)Math.ceil(entity.getWeight() / 10.0);
         while (!entity.isDoomed() && (distRemaining > 0)) {
-            nextPos = curPos.translated(direction);
-            // Is the next hex off the board?
-            if (!game.getBoard().contains(nextPos)) {
-                checkSkidOffMap(game);
-                // Whether we can leave the map or not, the skid is finished
+            if (!updatePosition(game)) {
                 break;
             }
-
-            IHex nextHex = game.getBoard().getHex(nextPos);
-            distRemaining -= nextHex.movementCost(entity) + 1;
-            calcNextElevation(nextHex);
-
-            boolean crashedIntoTerrain = checkForCrashIntoTerrain(game, nextHex);
+            
+            boolean crashedIntoTerrain = checkForCrashIntoTerrain(game);
 
             Entity crashDropship = null;
             for (Entity en : game.getEntitiesVector(nextPos)) {
@@ -167,7 +160,7 @@ public class EntitySkid extends EntityRuleHandler {
             }
 
             if (crashedIntoTerrain) {
-                processCollisionWithTerrain(game, nextHex);
+                processCollisionWithTerrain(game);
                 break;
             }
 
@@ -784,6 +777,33 @@ public class EntitySkid extends EntityRuleHandler {
     }
     
     /**
+     * Updates current position and finds the next position and elevation, and subtracts the cost of entering
+     * the next hex from the remaining distance. If the next hex is not on the map, either removes the
+     * entity or stops the skid, depending on game options.
+     * 
+     * @param game The server's {@link IGame game} instance
+     * @return     {@code true} if the position was successfully updated, {@code false} if the next hex
+     *             in the skid would carry the unit off the map
+     */
+    boolean updatePosition(IGame game) {
+        nextPos = curPos.translated(direction);
+        // Is the next hex off the board?
+        if (!game.getBoard().contains(nextPos)) {
+            checkSkidOffMap(game);
+            // Whether we can leave the map or not, the skid is finished
+            return false;
+        }
+
+        nextHex = game.getBoard().getHex(nextPos);
+        distRemaining -= nextHex.movementCost(entity) + 1;
+        calcNextElevation();
+        return true;
+    }
+    
+    /**
+     * If the game options allow eliminating units by pushing them off the board, removes the entity from
+     * play along with any that it might be carrying. Otherwise stops the skid at the edge of the map.
+     * 
      * @param game The server's {@link IGame game} instance
      */
     void checkSkidOffMap(IGame game) {
@@ -833,7 +853,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @param nextHex The next hex the Entity will skid/sideslip into.
      */
-    void calcNextElevation(IHex nextHex) {
+    void calcNextElevation() {
         // By default, the unit is going to fall to the floor of the next
         // hex
         curAltitude = currentElevation + curHex.getLevel();
@@ -910,7 +930,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @return Whether the {@link Entity} crashes into the terrain of the next hex.
      */
-    boolean checkForCrashIntoTerrain(IGame game, IHex nextHex) {
+    boolean checkForCrashIntoTerrain(IGame game) {
         if ((entity.getMovementMode() == EntityMovementMode.VTOL)
                 && (nextHex.containsTerrain(Terrains.WOODS)
                         || nextHex.containsTerrain(Terrains.JUNGLE))
@@ -956,7 +976,7 @@ public class EntitySkid extends EntityRuleHandler {
      * @param game
      * @param nextHex
      */
-    void processCollisionWithTerrain(IGame game, IHex nextHex) {
+    void processCollisionWithTerrain(IGame game) {
         Report r;
         if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
             Building bldg = game.getBoard().getBuildingAt(nextPos);
@@ -1114,6 +1134,10 @@ public class EntitySkid extends EntityRuleHandler {
 
     IHex getCurHex() {
         return curHex;
+    }
+    
+    IHex getNextHex() {
+        return nextHex;
     }
 
     int getDistRemaining() {
