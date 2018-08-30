@@ -24,7 +24,6 @@ import megamek.common.Building;
 import megamek.common.Compute;
 import megamek.common.Coords;
 import megamek.common.CriticalSlot;
-import megamek.common.Dropship;
 import megamek.common.Entity;
 import megamek.common.EntityMovementMode;
 import megamek.common.EntityMovementType;
@@ -149,19 +148,18 @@ public class EntitySkid extends EntityRuleHandler {
                 break;
             }
             
-            boolean crashedIntoTerrain = checkForCrashIntoTerrain(game);
+            if (checkTerrainCollision(game)) {
+                processTerrainCollision(game);
+                break;
+            }
 
             Entity crashDropship = null;
             for (Entity en : game.getEntitiesVector(nextPos)) {
-                if ((en instanceof Dropship) && !en.isAirborne()
-                    && (nextAltitude <= (en.relHeight()))) {
+                if ((en.hasETypeFlag(Entity.ETYPE_DROPSHIP)) && !en.isAirborne()
+                        && (nextAltitude <= (en.relHeight()))) {
                     crashDropship = en;
+                    break;
                 }
-            }
-
-            if (crashedIntoTerrain) {
-                processCollisionWithTerrain(game);
-                break;
             }
 
             // did we hit a dropship. Oww!
@@ -170,50 +168,9 @@ public class EntitySkid extends EntityRuleHandler {
             // we assign damage as per an accidental charge, but do not displace
             // the dropship and
             // end the skid
-            else if (null != crashDropship) {
-                r = new Report(2050);
-                r.subject = entity.getId();
-                r.indent();
-                r.add(crashDropship.getShortName(), true);
-                r.add(nextPos.getBoardNum(), true);
-                addReport(r);
-                ChargeAttackAction caa = new ChargeAttackAction(entity.getId(),
-                        crashDropship.getTargetType(),
-                        crashDropship.getTargetId(),
-                        crashDropship.getPosition());
-                ToHitData toHit = caa.toHit(game, true);
-                process(server.new ChargeDamage(entity, crashDropship, toHit, direction), game);
-                if ((entity.getMovementMode() == EntityMovementMode.WIGE)
-                    || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
-                    int hitSide = (step.getFacing() - direction) + 6;
-                    hitSide %= 6;
-                    int table = 0;
-                    switch (hitSide) {// quite hackish...I think it ought to
-                        // work, though.
-                        case 0:// can this happen?
-                            table = ToHitData.SIDE_FRONT;
-                            break;
-                        case 1:
-                        case 2:
-                            table = ToHitData.SIDE_LEFT;
-                            break;
-                        case 3:
-                            table = ToHitData.SIDE_REAR;
-                            break;
-                        case 4:
-                        case 5:
-                            table = ToHitData.SIDE_RIGHT;
-                            break;
-                    }
-                    currentElevation = nextElevation;
-                    process(server.new AirborneVehicleCrash((Tank) entity, false, true,
-                            distRemaining, curPos, currentElevation, table), game);
-                    break;
-                }
-                if (!crashDropship.isDoomed() && !crashDropship.isDestroyed()
-                    && !game.isOutOfGame(crashDropship)) {
-                    break;
-                }
+            if ((null != crashDropship) && !processDropshipCollision(crashDropship, game)) {
+                distRemaining = 0;
+                break;
             }
 
             // Have skidding units suffer falls (off a cliff).
@@ -930,7 +887,7 @@ public class EntitySkid extends EntityRuleHandler {
      * 
      * @return Whether the {@link Entity} crashes into the terrain of the next hex.
      */
-    boolean checkForCrashIntoTerrain(IGame game) {
+    boolean checkTerrainCollision(IGame game) {
         if ((entity.getMovementMode() == EntityMovementMode.VTOL)
                 && (nextHex.containsTerrain(Terrains.WOODS)
                         || nextHex.containsTerrain(Terrains.JUNGLE))
@@ -976,7 +933,7 @@ public class EntitySkid extends EntityRuleHandler {
      * @param game
      * @param nextHex
      */
-    void processCollisionWithTerrain(IGame game) {
+    void processTerrainCollision(IGame game) {
         Report r;
         if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
             Building bldg = game.getBoard().getBuildingAt(nextPos);
@@ -1080,6 +1037,56 @@ public class EntitySkid extends EntityRuleHandler {
         }
         // Stop skid
         distRemaining = 0;
+    }
+    
+    /**
+     * Executes a charge attack against a grounded dropship.
+     * 
+     * @param crashDropship The grounded dropship
+     * @param game          The server's {@link IGame game} instance
+     * @return              Whether the skid can continue past the dropship 
+     */
+    boolean processDropshipCollision(Entity crashDropship, IGame game) {
+        Report r = new Report(2050);
+        r.subject = entity.getId();
+        r.indent();
+        r.add(crashDropship.getShortName(), true);
+        r.add(nextPos.getBoardNum(), true);
+        addReport(r);
+        ChargeAttackAction caa = new ChargeAttackAction(entity.getId(),
+                crashDropship.getTargetType(),
+                crashDropship.getTargetId(),
+                crashDropship.getPosition());
+        ToHitData toHit = caa.toHit(game, true);
+        process(server.new ChargeDamage(entity, crashDropship, toHit, direction), game);
+        if ((entity.getMovementMode() == EntityMovementMode.WIGE)
+            || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
+            int hitSide = (step.getFacing() - direction) + 6;
+            hitSide %= 6;
+            int table = 0;
+            switch (hitSide) {// quite hackish...I think it ought to
+                // work, though.
+                case 0:// can this happen?
+                    table = ToHitData.SIDE_FRONT;
+                    break;
+                case 1:
+                case 2:
+                    table = ToHitData.SIDE_LEFT;
+                    break;
+                case 3:
+                    table = ToHitData.SIDE_REAR;
+                    break;
+                case 4:
+                case 5:
+                    table = ToHitData.SIDE_RIGHT;
+                    break;
+            }
+            currentElevation = nextElevation;
+            process(server.new AirborneVehicleCrash((Tank) entity, false, true,
+                    distRemaining, curPos, currentElevation, table), game);
+            return false;
+        }
+        return crashDropship.isDoomed() || crashDropship.isDestroyed() || game.isOutOfGame(crashDropship);
     }
 
     void doVehicleFlipDamage(int damage, IGame game) {

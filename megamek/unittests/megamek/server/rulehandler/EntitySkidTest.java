@@ -3,7 +3,9 @@ package megamek.server.rulehandler;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -37,7 +39,9 @@ public class EntitySkidTest {
     private IBoard board;
     private EntitySkid skid;
     private IGame game;
-
+    private Server server;
+    private List<RuleHandler> childHandlers;
+    
     private void initSkid(int elevHex1, int elevHex2) {
         initSkid(elevHex1, elevHex2, EntityMovementMode.BIPED, 0);
     }
@@ -61,13 +65,20 @@ public class EntitySkidTest {
             .thenAnswer(inv -> curPos.equals(inv.getArguments()[0])? curHex : nextHex);
         when(board.contains(any(Coords.class))).thenReturn(true);
         game.setBoard(board);
+        server = mock(Server.class);
+        childHandlers = new ArrayList<>();
         skid = new EntitySkid(entity, curPos, startElev, 0, 5, mock(MoveStep.class),
-                EntityMovementType.MOVE_WALK, false, mock(Server.class));
+                EntityMovementType.MOVE_WALK, false, server) {
+            @Override
+            public void process(RuleHandler child, IGame game) {
+                childHandlers.add(child);
+            }
+        };
         skid.initStartingValues(game);
     }
     
     /**
-     * @return A crew mock that returns false for boolean SPAs
+     * @return A {@link Crew} mock that returns false for boolean SPAs
      */
     private Crew createMockCrew() {
         PilotOptions emptyOptions = mock(PilotOptions.class);
@@ -76,7 +87,7 @@ public class EntitySkidTest {
         when(crew.getOptions()).thenReturn(emptyOptions);
         return crew;
     }
-
+    
     private Entity createMockEntity(final int id) {
         Entity entity = mock(Entity.class);
         when(entity.getId()).thenReturn(id);
@@ -257,7 +268,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
         
-        assertTrue(skid.checkForCrashIntoTerrain(game));
+        assertTrue(skid.checkTerrainCollision(game));
     }
 
     @Test
@@ -270,7 +281,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
         
-        assertTrue(skid.checkForCrashIntoTerrain(game));
+        assertTrue(skid.checkTerrainCollision(game));
     }
 
     @Test
@@ -283,7 +294,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
         
-        assertFalse(skid.checkForCrashIntoTerrain(game));
+        assertFalse(skid.checkTerrainCollision(game));
     }
 
     @Test
@@ -296,7 +307,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertTrue(skid.checkForCrashIntoTerrain(game));
+        assertTrue(skid.checkTerrainCollision(game));
     }
 
     @Test
@@ -305,7 +316,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
         
-        assertFalse(skid.checkForCrashIntoTerrain(game));
+        assertFalse(skid.checkTerrainCollision(game));
         assertEquals(skid.getNextElevation(), 1);
     }
 
@@ -315,7 +326,7 @@ public class EntitySkidTest {
     
         skid.updatePosition(game);
         
-        assertTrue(skid.checkForCrashIntoTerrain(game));
+        assertTrue(skid.checkTerrainCollision(game));
     }
 
     @Test
@@ -327,7 +338,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
         
-        assertFalse(skid.checkForCrashIntoTerrain(game));
+        assertFalse(skid.checkTerrainCollision(game));
         assertEquals(skid.getNextElevation(), 0);
     }
 
@@ -336,8 +347,30 @@ public class EntitySkidTest {
         initSkid(2, 4);
         skid.updatePosition(game);
 
-        skid.processCollisionWithTerrain(game);
+        skid.processTerrainCollision(game);
         
         assertEquals(skid.getDistRemaining(), 0);
+    }
+    
+    @Test
+    public void dropshipStopsSkidIfNotDestroyed() {
+        initSkid(0, 0);
+        Entity dropship = mock(Entity.class);
+        
+        boolean continueSkid = skid.processDropshipCollision(dropship, game);
+
+        assertFalse(continueSkid);
+        assertTrue(childHandlers.stream().anyMatch(h -> h instanceof Server.ChargeDamage));
+    }
+    
+    @Test
+    public void skidContinuesIfCollisionDestroysDropship() {
+        initSkid(0, 0);
+        Entity dropship = mock(Entity.class);
+        when(dropship.isDestroyed()).thenReturn(true);
+        
+        boolean continueSkid = skid.processDropshipCollision(dropship, game);
+        
+        assertTrue(continueSkid);
     }
 }
