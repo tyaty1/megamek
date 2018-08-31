@@ -28,6 +28,7 @@ import megamek.common.IGame;
 import megamek.common.IHex;
 import megamek.common.IPlayer;
 import megamek.common.MoveStep;
+import megamek.common.PilotingRollData;
 import megamek.common.Tank;
 import megamek.common.Terrain;
 import megamek.common.Terrains;
@@ -349,16 +350,6 @@ public class EntitySkidTest {
     }
 
     @Test
-    public void crashIntoTerrainStopsSkid() {
-        initSkid(2, 4);
-        skid.updatePosition(game);
-
-        skid.processTerrainCollision(game);
-        
-        assertEquals(skid.getDistRemaining(), 0);
-    }
-    
-    @Test
     public void dropshipStopsSkidIfNotDestroyed() {
         initSkid(0, 0);
         Entity dropship = mock(Entity.class);
@@ -423,7 +414,6 @@ public class EntitySkidTest {
         skid.updatePosition(game);
         
         assertTrue(skid.fallOffCliff(game));
-        assertEquals(skid.getDistRemaining(), 0);
         assertTrue(childHandlers.stream().anyMatch(h -> h instanceof Server.EntityFallIntoHex));
     }
     
@@ -445,5 +435,47 @@ public class EntitySkidTest {
         
         assertFalse(skid.fallOffCliff(game));
         assertTrue(skid.getDistRemaining() > 0);
+    }
+    
+    @Test
+    public void infantryAvoidsChargeAutomatically() {
+        initSkid(0, 0);
+        Entity target = createMockEntity(2);
+        when(target.hasETypeFlag(anyLong()))
+            .thenAnswer(inv -> ((Long) inv.getArguments()[0]).longValue() == Entity.ETYPE_INFANTRY);
+        
+        assertTrue(skid.canAvoidSkid(target, game));
+    }
+    
+    @Test
+    public void entityAvoidsChargeWithSuccessfulPSR() {
+        initSkid(0, 0);
+        Entity target = createMockEntity(2);
+        PilotingRollData psr = new PilotingRollData(2, PilotingRollData.AUTOMATIC_SUCCESS, "");
+        when(target.getBasePilotingRoll()).thenReturn(psr);
+        
+        assertTrue(skid.canAvoidSkid(target, game));
+    }
+    
+    @Test
+    public void entityDoesNotAvoidChargeWithUnsuccessfulPSR() {
+        initSkid(0, 0);
+        Entity target = createMockEntity(2);
+        PilotingRollData psr = new PilotingRollData(2, PilotingRollData.AUTOMATIC_FAIL, "");
+        when(target.getBasePilotingRoll()).thenReturn(psr);
+        
+        assertFalse(skid.canAvoidSkid(target, game));
+    }
+    
+    @Test
+    public void largeSupportVeeNeverAvoidsCharge() {
+        initSkid(0, 0);
+        Entity target = createMockEntity(2);
+        when(target.hasETypeFlag(anyLong()))
+        .thenAnswer(inv -> ((Long) inv.getArguments()[0]).longValue() == Entity.ETYPE_LARGE_SUPPORT_TANK);
+        PilotingRollData psr = new PilotingRollData(2, PilotingRollData.AUTOMATIC_SUCCESS, "");
+        when(target.getBasePilotingRoll()).thenReturn(psr);
+        
+        assertFalse(skid.canAvoidSkid(target, game));
     }
 }
