@@ -44,6 +44,7 @@ import megamek.common.TargetRoll;
 import megamek.common.Terrains;
 import megamek.common.ToHitData;
 import megamek.common.actions.ChargeAttackAction;
+import megamek.common.annotations.Nullable;
 import megamek.common.logging.DefaultMmLogger;
 import megamek.common.options.OptionsConstants;
 import megamek.server.Server;
@@ -153,36 +154,20 @@ public class EntitySkid extends EntityRuleHandler {
                 break;
             }
 
-            Entity crashDropship = null;
-            for (Entity en : game.getEntitiesVector(nextPos)) {
-                if ((en.hasETypeFlag(Entity.ETYPE_DROPSHIP)) && !en.isAirborne()
-                        && (nextAltitude <= (en.relHeight()))) {
-                    crashDropship = en;
-                    break;
-                }
-            }
-
             // did we hit a dropship. Oww!
             // Taharqa: The rules on how to handle this are completely missing,
             // so I am assuming
             // we assign damage as per an accidental charge, but do not displace
             // the dropship and
             // end the skid
+            Entity crashDropship = checkDropshipCollision(game);
             if ((null != crashDropship) && !processDropshipCollision(crashDropship, game)) {
                 distRemaining = 0;
                 break;
             }
-
-            // Have skidding units suffer falls (off a cliff).
-            else if (curAltitude > (nextAltitude + entity
-                    .getMaxElevationChange())
-                    && !(entity.getMovementMode() == EntityMovementMode.WIGE
-                            && currentElevation > curHex.ceiling())) {
-                process(server.new EntityFallIntoHex(entity, entity.getElevation(),
-                        curPos, nextPos, entity.getBasePilotingRoll(moveType), true), game);
-                process(server.new EntityDisplacementMinefieldCheck(entity,
-                        curPos, nextPos, nextElevation), game);
-                // Stay in the current hex and stop skidding.
+            
+            if (fallOffCliff(game)) {
+                distRemaining = 0;
                 break;
             }
 
@@ -1038,7 +1023,24 @@ public class EntitySkid extends EntityRuleHandler {
         // Stop skid
         distRemaining = 0;
     }
-    
+
+    /**
+     * Checks whether there is a grounded dropship in the next hex. If the skidding {@link Entity} is
+     * airborne and sideslipping, also checks whether it is low enough to collide.
+     * 
+     * @param game The server's {@link IGame game} instance}
+     * @return     The Dropship to collide with, if any, or {@code null} if there is not one.
+     */
+    @Nullable Entity checkDropshipCollision(IGame game) {
+        for (Entity en : game.getEntitiesVector(nextPos)) {
+            if ((en.hasETypeFlag(Entity.ETYPE_DROPSHIP)) && !en.isAirborne()
+                    && (nextAltitude <= (en.relHeight()))) {
+                return en;
+            }
+        }
+        return null;
+    }
+
     /**
      * Executes a charge attack against a grounded dropship.
      * 
@@ -1060,7 +1062,7 @@ public class EntitySkid extends EntityRuleHandler {
         ToHitData toHit = caa.toHit(game, true);
         process(server.new ChargeDamage(entity, crashDropship, toHit, direction), game);
         if ((entity.getMovementMode() == EntityMovementMode.WIGE)
-            || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
+                || (entity.getMovementMode() == EntityMovementMode.VTOL)) {
             int hitSide = (step.getFacing() - direction) + 6;
             hitSide %= 6;
             int table = 0;
@@ -1084,9 +1086,35 @@ public class EntitySkid extends EntityRuleHandler {
             currentElevation = nextElevation;
             process(server.new AirborneVehicleCrash((Tank) entity, false, true,
                     distRemaining, curPos, currentElevation, table), game);
+            distRemaining = 0;
             return false;
         }
         return crashDropship.isDoomed() || crashDropship.isDestroyed() || game.isOutOfGame(crashDropship);
+    }
+    
+    /**
+     * Checks for drop in elevation greater than the maximum change, and if so processes accidental fall
+     * from above and stops the skid.
+     * 
+     * @param game The server's {@link IGame game} instance
+     * @return     Whether an accidental fall from above occurred.
+     */
+    boolean fallOffCliff(IGame game) {
+        // WiGEs just descend
+        if ((entity.getMovementMode() == EntityMovementMode.WIGE)
+                && (curAltitude > curHex.ceiling())) {
+            return false;
+        }
+        if (curAltitude > (nextAltitude + entity.getMaxElevationChange())) {
+            process(server.new EntityFallIntoHex(entity, entity.getElevation(),
+                    curPos, nextPos, entity.getBasePilotingRoll(moveType), true), game);
+            process(server.new EntityDisplacementMinefieldCheck(entity,
+                    curPos, nextPos, nextElevation), game);
+            // Stay in the current hex and stop skidding.
+            distRemaining = 0;
+            return true;
+        }
+        return false;
     }
 
     void doVehicleFlipDamage(int damage, IGame game) {

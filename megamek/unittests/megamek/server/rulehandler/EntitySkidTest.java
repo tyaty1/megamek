@@ -1,7 +1,13 @@
 package megamek.server.rulehandler;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -372,5 +378,72 @@ public class EntitySkidTest {
         boolean continueSkid = skid.processDropshipCollision(dropship, game);
         
         assertTrue(continueSkid);
+    }
+    
+    @Test
+    public void vtolCollisionWithDropship() {
+        initSkid(0, 0, EntityMovementMode.VTOL, 5);
+        skid.updatePosition(game);
+        Entity dropship = mock(Entity.class);
+        when(dropship.hasETypeFlag(anyLong()))
+            .thenAnswer(inv -> ((Long) inv.getArguments()[0]).longValue() == Entity.ETYPE_DROPSHIP);
+        when(dropship.relHeight()).thenReturn(9); // spheroid
+        when(dropship.isAirborne()).thenReturn(false);
+        List<Entity> entities = Collections.singletonList(dropship);
+        IGame mockGame = mock(Game.class);
+        when(mockGame.getEntitiesVector(any())).thenReturn(entities);
+        
+        Entity target = skid.checkDropshipCollision(mockGame);
+        
+        assertEquals(target, dropship);
+    }
+    
+    @Test
+    public void vtolSideslipOverDropship() {
+        initSkid(0, 0, EntityMovementMode.VTOL, 10);
+        skid.updatePosition(game);
+        Entity dropship = mock(Entity.class);
+        when(dropship.hasETypeFlag(anyLong()))
+            .thenAnswer(inv -> ((Long) inv.getArguments()[0]).longValue() == Entity.ETYPE_DROPSHIP);
+        when(dropship.relHeight()).thenReturn(9); // spheroid
+        when(dropship.isAirborne()).thenReturn(false);
+        List<Entity> entities = Collections.singletonList(dropship);
+        IGame mockGame = mock(Game.class);
+        when(mockGame.getEntitiesVector(any())).thenReturn(entities);
+        
+        Entity target = skid.checkDropshipCollision(mockGame);
+        
+        assertEquals(target, null);
+    }
+    
+    @Test
+    public void fallOffCliffEndsSkid() {
+        initSkid(5, 0);
+        when(entity.getMaxElevationChange()).thenReturn(2);
+        skid.updatePosition(game);
+        
+        assertTrue(skid.fallOffCliff(game));
+        assertEquals(skid.getDistRemaining(), 0);
+        assertTrue(childHandlers.stream().anyMatch(h -> h instanceof Server.EntityFallIntoHex));
+    }
+    
+    @Test
+    public void doesNotFallOffCliffForChangeWithinLimits() {
+        initSkid(2, 0);
+        when(entity.getMaxElevationChange()).thenReturn(2);
+        skid.updatePosition(game);
+        
+        assertFalse(skid.fallOffCliff(game));
+        assertTrue(skid.getDistRemaining() > 0);
+    }
+    
+    @Test
+    public void airborneWigeDoesNotFallOffCliff() {
+        initSkid(5, 0, EntityMovementMode.WIGE, 1);
+        when(entity.getMaxElevationChange()).thenReturn(1);
+        skid.updatePosition(game);
+        
+        assertFalse(skid.fallOffCliff(game));
+        assertTrue(skid.getDistRemaining() > 0);
     }
 }
