@@ -123,16 +123,26 @@ public class EntitySkid extends EntityRuleHandler {
         return removeFromPlay;
     }
 
+    /** coordinates of the hex we are leaving */
     private Coords nextPos;
+    /** coordinates of the hex we are entering */
     private Coords curPos;
+    /** the hex we are leaving */
     private IHex curHex;
+    /** the hex we are entering */
     private IHex nextHex;
+    /** number of hexes left to skid; actual skid distance may be smaller due to terrain */
     private int distRemaining;
+    /** height in the hex we are leaving relative to the surface of the terrain */
     private int currentElevation;
+    /** height in the hex we are entering relative to the surface of the terrain */
     private int nextElevation;
-    private int curAltitude;
-    private int nextAltitude;
-    private int skidDistance; // Actual distance moved
+    /** height in the hex we are leaving relative to level zero on the board */
+    private int curLevel;
+    /** height in the hex we are leaving entering to level zero on the board */
+    private int nextLevel;
+    /** number of hexes moved so far in the skid, used to compute skid damage for mechs */
+    private int skidDistance;
     
     @Override
     public void resolve(IGame game) {
@@ -411,16 +421,16 @@ public class EntitySkid extends EntityRuleHandler {
     void calcNextElevation() {
         // By default, the unit is going to fall to the floor of the next
         // hex
-        curAltitude = currentElevation + curHex.getLevel();
-        nextAltitude = nextHex.floor();
+        curLevel = currentElevation + curHex.getLevel();
+        nextLevel = nextHex.floor();
 
         // but VTOL keep altitude
         if (entity.getMovementMode() == EntityMovementMode.VTOL) {
-            nextAltitude = Math.max(nextAltitude, curAltitude);
+            nextLevel = Math.max(nextLevel, curLevel);
         } else if (entity.getMovementMode() == EntityMovementMode.WIGE
-                && currentElevation > 0 && nextAltitude < curAltitude) {
+                && currentElevation > 0 && nextLevel < curLevel) {
             // Airborne WiGEs drop to one level above the surface
-            nextAltitude++;
+            nextLevel++;
         } else {
             // Is there a building to "catch" the unit?
             if (nextHex.containsTerrain(Terrains.BLDG_ELEV)) {
@@ -431,9 +441,9 @@ public class EntitySkid extends EntityRuleHandler {
                 // higher than the unit
                 // (e.g. the building is on a hill). Otherwise, we skid into
                 // solid earth.
-                if (curAltitude >= nextHex.floor()) {
-                    nextAltitude = Math
-                            .min(curAltitude,
+                if (curLevel >= nextHex.floor()) {
+                    nextLevel = Math
+                            .min(curLevel,
                                  nextHex.getLevel()
                                  + nextHex
                                          .terrainLevel(Terrains.BLDG_ELEV));
@@ -447,32 +457,32 @@ public class EntitySkid extends EntityRuleHandler {
                 int exitDir = (direction + 3) % 6;
                 exitDir = 1 << exitDir;
                 if ((nextHex.getTerrain(Terrains.BRIDGE).getExits() & exitDir) == exitDir) {
-                    nextAltitude = Math
-                            .min(curAltitude,
+                    nextLevel = Math
+                            .min(curLevel,
                                  Math.max(
-                                         nextAltitude,
+                                         nextLevel,
                                          nextHex.getLevel()
                                          + nextHex
                                                  .terrainLevel(Terrains.BRIDGE_ELEV)));
                 }
             }
-            if ((nextAltitude <= nextHex.surface())
-                && (curAltitude >= curHex.surface())) {
+            if ((nextLevel <= nextHex.surface())
+                && (curLevel >= curHex.surface())) {
                 // Hovercraft can "skid" over water.
                 // all units can skid over ice.
                 if ((entity instanceof Tank)
                         && (entity.getMovementMode() == EntityMovementMode.HOVER)
                         && nextHex.containsTerrain(Terrains.WATER)) {
-                    nextAltitude = nextHex.surface();
+                    nextLevel = nextHex.surface();
                 } else {
                     if (nextHex.containsTerrain(Terrains.ICE)) {
-                        nextAltitude = nextHex.surface();
+                        nextLevel = nextHex.surface();
                     }
                 }
             }
         }
         // The elevation the skidding unit will occupy in next hex
-        nextElevation = nextAltitude - nextHex.surface();
+        nextElevation = nextLevel - nextHex.surface();
     }
 
     /**
@@ -489,7 +499,7 @@ public class EntitySkid extends EntityRuleHandler {
         if ((entity.getMovementMode() == EntityMovementMode.VTOL)
                 && (nextHex.containsTerrain(Terrains.WOODS)
                         || nextHex.containsTerrain(Terrains.JUNGLE))
-                && (nextAltitude < nextHex.ceiling())) {
+                && (nextLevel < nextHex.ceiling())) {
             return true;
         }
 
@@ -505,11 +515,11 @@ public class EntitySkid extends EntityRuleHandler {
 
         // however WIGE can gain 1 level to avoid crashing into the terrain.
         if ((entity.getMovementMode() == EntityMovementMode.WIGE) && (currentElevation > 0)) {
-            if (curAltitude == nextHex.floor()) {
+            if (curLevel == nextHex.floor()) {
                 nextElevation = 1;
                 return false;
             } else if ((entity.hasETypeFlag(Entity.ETYPE_LAND_AIR_MECH))
-                    && (curAltitude + 1 == nextHex.floor())) {
+                    && (curLevel + 1 == nextHex.floor())) {
                 // LAMs in airmech mode skid across terrain that is two levels higher rather than crashing,
                 // Reset the skid distance for skid damage calculations.
                 nextElevation = 0;
@@ -522,7 +532,7 @@ public class EntitySkid extends EntityRuleHandler {
             }
         }
         // None of the exceptions apply; compare surface heights
-        return curAltitude < nextAltitude;
+        return curLevel < nextLevel;
     }
     
     /**
@@ -645,7 +655,7 @@ public class EntitySkid extends EntityRuleHandler {
     @Nullable Entity checkDropshipCollision(IGame game) {
         for (Entity en : game.getEntitiesVector(nextPos)) {
             if ((en.hasETypeFlag(Entity.ETYPE_DROPSHIP)) && !en.isAirborne()
-                    && (nextAltitude <= (en.relHeight()))) {
+                    && (nextLevel <= (en.relHeight()))) {
                 return en;
             }
         }
@@ -712,10 +722,10 @@ public class EntitySkid extends EntityRuleHandler {
     boolean fallOffCliff(IGame game) {
         // WiGEs just descend
         if ((entity.getMovementMode() == EntityMovementMode.WIGE)
-                && (curAltitude > curHex.ceiling())) {
+                && (curLevel > curHex.ceiling())) {
             return false;
         }
-        if (curAltitude > (nextAltitude + entity.getMaxElevationChange())) {
+        if (curLevel > (nextLevel + entity.getMaxElevationChange())) {
             process(server.new EntityFallIntoHex(entity, entity.getElevation(),
                     curPos, nextPos, entity.getBasePilotingRoll(moveType), true), game);
             process(server.new EntityDisplacementMinefieldCheck(entity,
@@ -1290,12 +1300,12 @@ public class EntitySkid extends EntityRuleHandler {
         return nextElevation;
     }
 
-    int getCurAltitude() {
-        return curAltitude;
+    int getCurLevel() {
+        return curLevel;
     }
 
-    int getNextAltitude() {
-        return nextAltitude;
+    int getNextLevel() {
+        return nextLevel;
     }
 
     int getSkidDistance() {

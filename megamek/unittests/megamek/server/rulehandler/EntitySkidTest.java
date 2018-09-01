@@ -167,7 +167,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor(), skid.getNextAltitude());
+        assertEquals(nextHex.floor(), skid.getNextLevel());
     }
 
     @Test
@@ -176,7 +176,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(skid.getCurrentElevation() + curHex.floor(), skid.getNextAltitude());
+        assertEquals(skid.getCurrentElevation() + curHex.floor(), skid.getNextLevel());
     }
     
     @Test
@@ -185,7 +185,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor() + 1, skid.getNextAltitude());
+        assertEquals(nextHex.floor() + 1, skid.getNextLevel());
     }
     
     @Test
@@ -194,7 +194,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor(), skid.getNextAltitude());
+        assertEquals(nextHex.floor(), skid.getNextLevel());
     }
 
     @Test
@@ -204,7 +204,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.ceiling(), skid.getNextAltitude());
+        assertEquals(nextHex.ceiling(), skid.getNextLevel());
     }
 
     @Test
@@ -214,7 +214,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.ceiling(), skid.getNextAltitude());
+        assertEquals(nextHex.ceiling(), skid.getNextLevel());
     }
 
     @Test
@@ -224,7 +224,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor(), skid.getNextAltitude());
+        assertEquals(nextHex.floor(), skid.getNextLevel());
     }
 
     @Test
@@ -234,7 +234,7 @@ public class EntitySkidTest {
         
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor(), skid.getNextAltitude());
+        assertEquals(nextHex.floor(), skid.getNextLevel());
     }
 
     @Test
@@ -244,8 +244,8 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.surface(), skid.getNextAltitude());
-        assertTrue(nextHex.floor() < skid.getNextAltitude());
+        assertEquals(nextHex.surface(), skid.getNextLevel());
+        assertTrue(nextHex.floor() < skid.getNextLevel());
     }
 
     @Test
@@ -255,8 +255,8 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.floor(), skid.getNextAltitude());
-        assertTrue(nextHex.surface() > skid.getNextAltitude());
+        assertEquals(nextHex.floor(), skid.getNextLevel());
+        assertTrue(nextHex.surface() > skid.getNextLevel());
     }
 
     @Test
@@ -266,7 +266,7 @@ public class EntitySkidTest {
 
         skid.updatePosition(game);
 
-        assertEquals(nextHex.surface(), skid.getNextAltitude());
+        assertEquals(nextHex.surface(), skid.getNextLevel());
     }
 
     @Test
