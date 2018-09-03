@@ -119,7 +119,7 @@ public abstract class RuleHandler {
      * @param game   The {@link Server server's} {@link IGame game} instance.
      */
     protected void process(RuleHandler child, IGame game) {
-        resolve(game);
+        child.resolve(game);
         addReport(child.getReports());
         addPackets(child.getPackets());
     }
