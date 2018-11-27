@@ -465,8 +465,7 @@ public class MoveStep implements Serializable {
         IHex destHex = game.getBoard().getHex(getPosition());
 
         // Check for pavement movement.
-        if (Compute.canMoveOnPavement(game, prev.getPosition(), getPosition(),
-                this)) {
+        if (!entity.isAirborne() && Compute.canMoveOnPavement(game, prev.getPosition(), getPosition(), this)) {
             setPavementStep(true);
         } else {
             setPavementStep(false);
@@ -762,8 +761,7 @@ public class MoveStep implements Serializable {
             case TURN_LEFT:
             case TURN_RIGHT:
                 // Check for pavement movement.
-                if (Compute.canMoveOnPavement(game, prev.getPosition(),
-                        getPosition(), this)) {
+                if (!entity.isAirborne() && Compute.canMoveOnPavement(game, prev.getPosition(), getPosition(), this)) {
                     setPavementStep(true);
                 } else {
                     setPavementStep(false);
@@ -2944,7 +2942,7 @@ public class MoveStep implements Serializable {
                     if ((destHex.terrainLevel(Terrains.WATER) == 1) && !isAmphibious) {
                         mp++;
                     } else if ((destHex.terrainLevel(Terrains.WATER) > 1) && !isAmphibious) {
-                        if (getEntity().getCrew().getOptions().booleanOption(OptionsConstants.PILOT_TM_FROGMAN)
+                        if (getEntity().hasAbility(OptionsConstants.PILOT_TM_FROGMAN)
                                 && ((entity instanceof Mech) || (entity instanceof Protomech))) {
                             mp += 2;
                         } else {
@@ -2981,7 +2979,7 @@ public class MoveStep implements Serializable {
                             || (moveMode == EntityMovementMode.HOVER))) {
                 delta_e *= 2;
             }
-            if (entity.getCrew().getOptions().booleanOption(OptionsConstants.PILOT_TM_MOUNTAINEER)) {
+            if (entity.hasAbility(OptionsConstants.PILOT_TM_MOUNTAINEER)) {
                 mp += delta_e - 1;
             } else {
                 mp += delta_e;

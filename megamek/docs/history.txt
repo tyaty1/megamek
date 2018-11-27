@@ -1,8 +1,25 @@
 
 VERSION HISTORY:
 ----------------
-v0.45.2-SNAPSHOT
+v0.45.2 (2018-11-18 0200 UTC)
 + Switched build system from ant to gradle.
++ Issue #1122: Piloting/gunnery skills generated from the wrong tables [Force Generator]
++ PR #1132: Zweihander
++ Issue #1149: Force Generator switching from Mechs to Protomechs for Clans that deploy them
++ Data: Various fixes to unit names as a result of the Large Craft changes.
++ Data: New Sprites
++ PR #1152: Refactor of methods for getting pilot SPAs
++ Issue #1127: Fix for units not applying camo in certain circumstances
++ PR #1164: System wide equipment [Support for aerospace equipment in a generic, non-firing arc location]
++ Issue #1172: Game Non-Responsive
++ Data: New Sprites
++ PR #1170: Bullet-proofing various edge cases for space maps; weather related info no longer displayed in space
++ Issue #1177: Rocket Launcher bug after configuring unit
++ PR #1185: Protomech validation, updates to protomech unit files from errata and addition of Wars of Reaving units.
++ PR #1186: Protomech equipment (implentation of melee weapon, quad melee system, fusillade, and magnetic clamps) 
++ PR #1184: Bot handling for aerospace units on low-atmospheric maps and on space maps using non-advanced flight rules
++ PR #1193: TRO style summary
++ Data: New Sprites
 
 v0.45.1 (2018-09-03 2300 UTC)
 + PR #1096: Security - address XXE vulnerabilities in XML parsers
@@ -21,6 +38,7 @@ v0.45.1 (2018-09-03 2300 UTC)
 + PR #1118: Expose MULParser.parse(Element) for MekHQ perf improvements.
 + Issue #612: [Feature] Year setting in various random unit generation mechanisms now gets set to the game year whenever that changes.
 + PR #1068: Advanced Aerospace construction data and unit fixes.
++ PR #1134: pilot portrait option for tooltip
 
 v0.45.0 (2018-08-02 0200 UTC)
 + PR #1010: New snow theme light woods images for Bloodwolf tilesets & removal of volcano theme woods.

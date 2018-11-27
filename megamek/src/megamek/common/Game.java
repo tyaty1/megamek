@@ -585,7 +585,7 @@ public class Game implements Serializable, IGame {
      */
     public boolean hasTacticalGenius(IPlayer player) {
         for (Entity entity : entities) {
-            if (entity.getCrew().getOptions().booleanOption(OptionsConstants.MISC_TACTICAL_GENIUS)
+            if (entity.hasAbility(OptionsConstants.MISC_TACTICAL_GENIUS)
                     && entity.getOwner().equals(player) && !entity.isDestroyed() && entity.isDeployed()
                     && !entity.isCarcass() && !entity.getCrew().isUnconscious()) {
                 return true;
@@ -1277,6 +1277,7 @@ public class Game implements Serializable, IGame {
         entity.setGame(this);
         if (entity instanceof Mech) {
             ((Mech) entity).setBAGrabBars();
+            ((Mech) entity).setProtomechClampMounts();
         }
         if (entity instanceof Tank) {
             ((Tank) entity).setBAGrabBars();
