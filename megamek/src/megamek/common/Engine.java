@@ -126,7 +126,7 @@ public class Engine implements Serializable, ITechnology {
 
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_A] = 0.0;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_B] = 0.0;
-        SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_C] = 1.0;
+        SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_C] = 1.5;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_D] = 1.0;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_E] = 0.75;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_F] = 0.5;
@@ -326,7 +326,7 @@ public class Engine implements Serializable, ITechnology {
      */
     public double getWeightEngine(Entity entity, RoundWeight roundWeight) {
         // Support Vehicles compute engine weight differently
-        if ((entity.isSupportVehicle() || hasFlag(SUPPORT_VEE_ENGINE))
+/*         if ((entity.isSupportVehicle() || hasFlag(SUPPORT_VEE_ENGINE))
                 && isValidEngine()) {
             int mp = entity.getOriginalWalkMP();
             if (entity.getMovementMode().equals(EntityMovementMode.RAIL)
@@ -351,7 +351,7 @@ public class Engine implements Serializable, ITechnology {
             }
             return roundWeight.round(weight, entity);
         }
-        // Protomech engines with rating < 40 use a special calculation
+ */        // Protomech engines with rating < 40 use a special calculation
         if (entity.hasETypeFlag(Entity.ETYPE_PROTOMECH) && (engineRating < 40)) {
             return roundWeight.round(engineRating * 0.025, entity);
         }
