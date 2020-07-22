@@ -326,7 +326,7 @@ public class Engine implements Serializable, ITechnology {
      */
     public double getWeightEngine(Entity entity, RoundWeight roundWeight) {
         // Support Vehicles compute engine weight differently
-/*         if ((entity.isSupportVehicle() || hasFlag(SUPPORT_VEE_ENGINE))
+        if ((entity.isSupportVehicle() || hasFlag(SUPPORT_VEE_ENGINE))
                 && isValidEngine()) {
             int mp = entity.getOriginalWalkMP();
             if (entity.getMovementMode().equals(EntityMovementMode.RAIL)
@@ -351,7 +351,7 @@ public class Engine implements Serializable, ITechnology {
             }
             return roundWeight.round(weight, entity);
         }
- */        // Protomech engines with rating < 40 use a special calculation
+        // Protomech engines with rating < 40 use a special calculation
         if (entity.hasETypeFlag(Entity.ETYPE_PROTOMECH) && (engineRating < 40)) {
             return roundWeight.round(engineRating * 0.025, entity);
         }
@@ -387,7 +387,7 @@ public class Engine implements Serializable, ITechnology {
         weight = roundWeight.round(weight, entity);
 
         if (hasFlag(TANK_ENGINE) && (isFusion() || (engineType == FISSION))) {
-            weight *= 1.5;
+            weight *= 1.0;
         }
         
         
