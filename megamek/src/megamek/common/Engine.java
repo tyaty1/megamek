@@ -676,7 +676,7 @@ public class Engine implements Serializable, ITechnology {
                 cost = 5000;
                 break;
             case XL_ENGINE:
-                cost = 20000;
+                cost = 8000;
                 break;
             case XXL_ENGINE:
                 cost = 100000;

@@ -2699,6 +2699,7 @@ public class Tank extends Entity {
         }
 
         double freeHeatSinks = (hasEngine() ? getEngine().getWeightFreeEngineHeatSinks() : 0);
+        freeHeatSinks = freeHeatSinks * 2;
         int sinks = 0;
         double turretWeight = 0;
         double paWeight = 0;

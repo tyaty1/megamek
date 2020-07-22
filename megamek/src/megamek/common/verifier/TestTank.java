@@ -269,7 +269,9 @@ public class TestTank extends TestEntity {
 
     @Override
     public int getCountHeatSinks() {
-        return heatNeutralHSRequirement();
+        double tmp_sinks= heatNeutralHSRequirement();
+        tmp_sinks= Math.ceil(tmp_sinks/2);
+        return tmp_sinks;
     }
 
     @Override
