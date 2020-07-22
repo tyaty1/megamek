@@ -126,7 +126,7 @@ public class Engine implements Serializable, ITechnology {
 
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_A] = 0.0;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_B] = 0.0;
-        SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_C] = 1.5;
+        SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_C] = 1.0;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_D] = 1.0;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_E] = 0.75;
         SV_ENGINE_RATINGS[NORMAL_ENGINE][EquipmentType.RATING_F] = 0.5;
