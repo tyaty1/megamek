@@ -35,7 +35,7 @@ public class ISLB2XAC extends LBXACWeapon {
         this.name = "LB 2-X AC";
         this.setInternalName("ISLBXAC2");
         this.addLookupName("IS LB 2-X AC");
-        this.heat = 1;
+        this.heat = 0;
         this.damage = 2;
         this.rackSize = 2;
         this.minimumRange = 4;
@@ -43,7 +43,7 @@ public class ISLB2XAC extends LBXACWeapon {
         this.mediumRange = 18;
         this.longRange = 27;
         this.extremeRange = 36;
-        this.tonnage = 6.0;
+        this.tonnage = 3.0;
         this.criticals = 4;
         this.bv = 42;
         this.cost = 150000;
